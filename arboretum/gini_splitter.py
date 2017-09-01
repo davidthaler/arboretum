@@ -8,7 +8,7 @@ date: August 2017
 '''
 import numpy as np
 import numba
-
+import tree_constants as tc
 
 @numba.jit(nopython=True)
 def split(x, y,  max_features=-1, min_leaf=1):
@@ -35,8 +35,8 @@ def split(x, y,  max_features=-1, min_leaf=1):
         2-tuple of feature index and split threshold of best split.
     '''
     m, n = x.shape
-    best_feature = -2
-    best_thr = 0.0
+    best_feature = tc.NO_FEATURE
+    best_thr = tc.NO_THR
     improve = False
     if max_features < 1:
         max_features = n

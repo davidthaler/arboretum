@@ -33,7 +33,7 @@ CHILD_LEFT_COL = 5
 CHILD_RIGHT_COL = 6
 
 
-def build_tree(x, y, min_leaf=1, min_split=2, max_depth=-1, depth=0, node_num=0):
+def build_tree(x, y, max_features=-1, min_leaf=1, min_split=2, max_depth=-1, depth=0, node_num=0):
     '''
     Recursively build a decision tree. 
     Returns a 2-D array of shape (num_nodes x 7) that describes the tree.
@@ -43,6 +43,8 @@ def build_tree(x, y, min_leaf=1, min_split=2, max_depth=-1, depth=0, node_num=0)
     Args:
         x: m x n numpy array of numeric features
         y: m-element 1-D numpy array of labels; must be 0-1.
+        max_features: try up to this number of features per split
+            default of -1 for all features
         min_leaf: each branch must have at least min_leaf samples
             default 1
         min_split: do not split node if it has less than `min_split` samples
@@ -58,14 +60,16 @@ def build_tree(x, y, min_leaf=1, min_split=2, max_depth=-1, depth=0, node_num=0)
     pos = y.sum()
     if (ct < min_split) or (depth == max_depth):
         return np.array([[-2.0, 0.0, ct, pos, node_num, -1, -1]])
-    feature, thr = split(x, y, min_leaf)
+    feature, thr = split(x, y, max_features=max_features, min_leaf=min_leaf)
     if feature == -2:
         return np.array([[feature, thr, ct, pos, node_num, -1, -1]])
     mask = x[:, feature] <= thr
     left_root = node_num + 1
-    left_tree = build_tree(x[mask], y[mask], min_leaf, min_split, max_depth, depth + 1, left_root)
+    left_tree = build_tree(x[mask], y[mask], max_features, min_leaf, 
+                            min_split, max_depth, depth + 1, left_root)
     right_root = left_root + len(left_tree)
-    right_tree = build_tree(x[~mask], y[~mask], min_leaf, min_split, max_depth, depth + 1, right_root)
+    right_tree = build_tree(x[~mask], y[~mask], max_features, min_leaf, 
+                            min_split, max_depth, depth + 1, right_root)
     root = np.array([[feature, thr, ct, pos, node_num, left_root, right_root]])
     return np.concatenate([root, left_tree, right_tree])
 

@@ -11,16 +11,24 @@ import numba
 
 
 @numba.jit(nopython=True)
-def split(x, y, min_samples=1):
+def split(x, y,  max_features=-1, min_leaf=1):
     '''
     Given features x and labels y, find the feature index and threshold for a
     split that produces the largest reduction in Gini impurity.
-    Each side of the split must have at least min_samples samples.
+    Each side of the split must have at least min_leaf samples.
+
+    Note:
+        If no valid split is found after max_features, and max_features is less
+        than the number of features, splitter will continue to try features, one
+        at a time, in random order, until a valid split is found, or until all 
+        features have been tried.
 
     Args:
         x: m x n numpy array of numeric features
         y: m-element 1-D numpy array of labels; must be 0-1.
-        min_samples: each branch must have at least min_samples samples
+        max_features: try up to this number of features per split
+            default of -1 for all features
+        min_leaf: each branch must have at least min_leaf samples
                 default 1
 
     Returns:
@@ -29,13 +37,20 @@ def split(x, y, min_samples=1):
     m, n = x.shape
     best_feature = -2
     best_thr = 0.0
+    improve = False
+    if max_features < 1:
+        max_features = n
     # the Gini impurity of this node before splitting
     best_score = 1 - (y.sum() / m)**2 - ((m - y.sum()) / m)**2
     # a code optimization for pure nodes
     if (y==y[0]).all():
         return (best_feature, best_thr)
-    # Iterate over features of x
-    for feature_idx in range(n):
+    # NB: numba does not support np.random.permutation
+    col_order = np.random.choice(np.arange(n), size=n, replace=False)
+    for col_ct in range(n):
+        if col_ct >= max_features and improve:
+            break
+        feature_idx = col_order[col_ct]
         f = x[:, feature_idx]
 
         # Produce 3 arrays:
@@ -70,8 +85,8 @@ def split(x, y, min_samples=1):
         npos_right = y.sum() - npos_left
         nneg_right = nright - npos_right
 
-        # trim to valid splits (at least min_samples both sides)
-        mask = (nleft >= min_samples) & (nright >= min_samples)
+        # trim to valid splits (at least min_leaf both sides)
+        mask = (nleft >= min_leaf) & (nright >= min_leaf)
         nleft = nleft[mask]
         nright = nright[mask]
         npos_left = npos_left[mask]
@@ -91,6 +106,7 @@ def split(x, y, min_samples=1):
         # Select the best split
         score = gini_split.min()
         if score < best_score:
+            improve = True
             best_score = score
             best_feature = feature_idx
             # Need index of feature of left side of split in the uniq array

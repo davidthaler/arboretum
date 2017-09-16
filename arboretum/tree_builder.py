@@ -38,13 +38,13 @@ def build_tree(x, y, max_features=-1, min_leaf=1, min_split=2, max_depth=-1, dep
         2-D numpy array of dtype 'float' with 
     '''
     ct = len(y)
-    pos = y.sum()
+    val = y.sum() / ct
     if (ct < min_split) or (depth == max_depth):
-        return np.array([[tc.NO_FEATURE, tc.NO_THR, ct, pos, node_num,
-                         tc.NO_CHILD, tc.NO_CHILD]])
+        return np.array([[tc.NO_FEATURE, tc.NO_THR, node_num,
+                         tc.NO_CHILD, tc.NO_CHILD, ct, val]])
     feature, thr = split(x, y, max_features=max_features, min_leaf=min_leaf)
     if feature == tc.NO_FEATURE:
-        return np.array([[feature, thr, ct, pos, node_num, tc.NO_CHILD, tc.NO_CHILD]])
+        return np.array([[feature, thr, node_num, tc.NO_CHILD, tc.NO_CHILD, ct, val]])
     mask = x[:, feature] <= thr
     left_root = node_num + 1
     left_tree = build_tree(x[mask], y[mask], max_features, min_leaf, 
@@ -52,7 +52,7 @@ def build_tree(x, y, max_features=-1, min_leaf=1, min_split=2, max_depth=-1, dep
     right_root = left_root + len(left_tree)
     right_tree = build_tree(x[~mask], y[~mask], max_features, min_leaf, 
                             min_split, max_depth, depth + 1, right_root)
-    root = np.array([[feature, thr, ct, pos, node_num, left_root, right_root]])
+    root = np.array([[feature, thr, node_num, left_root, right_root, ct, val]])
     return np.concatenate([root, left_tree, right_tree])
 
 
@@ -98,9 +98,7 @@ def predict_proba(tree, x):
         1-D numpy array (dtype float) of probabilities of class 1 membership.
     '''
     leaf_idx = apply(tree, x)
-    tot = tree[leaf_idx, tc.CT_COL]
-    pos = tree[leaf_idx, tc.POS_COL]
-    return pos / tot
+    return tree[leaf_idx, tc.VAL_COL]
 
 
 def predict(tree, x):

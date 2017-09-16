@@ -9,12 +9,14 @@ author: David Thaler
 date: August 2017
 '''
 import numpy as np
-from gini_splitter import split
 import numba
+import gini_splitter
+import mse_splitter
 import tree_constants as tc
 
 
-def build_tree(x, y, max_features=-1, min_leaf=1, min_split=2, max_depth=-1, depth=0, node_num=0):
+def build_tree(x, y, max_features=-1, min_leaf=1, min_split=2, max_depth=-1, 
+                depth=0, node_num=0, criterion='gini'):
     '''
     Recursively build a decision tree. 
     Returns a 2-D array of shape (num_nodes x 7) that describes the tree.
@@ -33,10 +35,18 @@ def build_tree(x, y, max_features=-1, min_leaf=1, min_split=2, max_depth=-1, dep
         depth: the depth of this node; the root is 0
         node_num: the node number of this node
             default 0 is for the root node
+        criterion: either 'gini' for classification or 'mse' for regression
+            default is 'gini'
 
     Returns:
         2-D numpy array of dtype 'float' with 
     '''
+    if criterion == 'gini':
+        split = gini_splitter.split
+    elif criterion == 'mse':
+        split = mse_splitter.split
+    else:
+        raise ValueError("'criterion' must be one of 'gini' or 'mse'")
     ct = len(y)
     val = y.sum() / ct
     if (ct < min_split) or (depth == max_depth):
@@ -48,10 +58,10 @@ def build_tree(x, y, max_features=-1, min_leaf=1, min_split=2, max_depth=-1, dep
     mask = x[:, feature] <= thr
     left_root = node_num + 1
     left_tree = build_tree(x[mask], y[mask], max_features, min_leaf, 
-                            min_split, max_depth, depth + 1, left_root)
+                            min_split, max_depth, depth + 1, left_root, criterion)
     right_root = left_root + len(left_tree)
     right_tree = build_tree(x[~mask], y[~mask], max_features, min_leaf, 
-                            min_split, max_depth, depth + 1, right_root)
+                            min_split, max_depth, depth + 1, right_root, criterion)
     root = np.array([[feature, thr, node_num, left_root, right_root, ct, val]])
     return np.concatenate([root, left_tree, right_tree])
 

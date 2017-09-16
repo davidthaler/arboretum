@@ -95,34 +95,18 @@ def apply(tree, x):
     return out.astype(int)
 
 
-def predict_proba(tree, x):
+def prediction_value(tree, x):
     '''
-    Predicts the probability of class 1 membership for each row in x
-    using the provided tree from build_tree.
+    Returns the prediction value for each row in x given a tree.
+    For regression trees, this is the estimate. For classification
+    trees, it is p(y=1|x).
 
     Args:
         tree: the array returned by build_tree
         x: m x n numpy array of numeric features
 
     Returns:
-        1-D numpy array (dtype float) of probabilities of class 1 membership.
+        1-D numpy array (dtype float) of prediction values
     '''
     leaf_idx = apply(tree, x)
     return tree[leaf_idx, tc.VAL_COL]
-
-
-def predict(tree, x):
-    '''
-    Makes 0/1 predictions for the data x using the provided tree
-    from build_tree.
-
-    NB: predicts p=0.5 as False
-
-    Args:
-        tree: the array returned by build_tree
-        x: m x n numpy array of numeric features
-
-    Returns:
-        1-D numpy array (dtype float) of 0.0 and 1.0 for the two classes.
-    '''
-    return (predict_proba(tree, x) > 0.5).astype(int)

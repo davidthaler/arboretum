@@ -37,6 +37,11 @@ class Tree:
         self._check_x(x)
         return tree_builder.apply(self.tree_, x)
 
+    def prediction_value(self, x):
+        '''For classifiers, a prob. For regressors, an estimate.'''
+        self._check_x(x)
+        return tree_builder.prediction_value(self.tree_, x)
+
 
 class RegressionTree(Tree):
 
@@ -48,8 +53,7 @@ class RegressionTree(Tree):
         self.max_depth = -1 if max_depth is None else max_depth
 
     def predict(self, x):
-        self._check_x(x)
-        return tree_builder.prediction_value(self.tree_, x)
+        return self.prediction_value(x)
 
 
 class ClassificationTree(Tree):
@@ -62,9 +66,7 @@ class ClassificationTree(Tree):
         self.max_depth = -1 if max_depth is None else max_depth
 
     def predict_proba(self, x):
-        self._check_x(x)
-        return tree_builder.prediction_value(self.tree_, x)
+        return self.prediction_value(x)
 
     def predict(self, x):
-        self.check_x(x)
         return (self.predict_proba(x) > 0.5).astype(int)

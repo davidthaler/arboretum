@@ -8,7 +8,7 @@ date: August 2017
 '''
 import numpy as np
 import numba
-import tree_constants as tc
+from . import tree_constants as tc
 
 @numba.jit(nopython=True)
 def split(x, y,  max_features=-1, min_leaf=1):

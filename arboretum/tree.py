@@ -5,10 +5,10 @@ author: David Thaler
 date: September 2017
 '''
 import numpy as np
-import tree_builder
-import mse_splitter
-import gini_splitter
-from basemodel import BaseModel
+from . import tree_builder
+from . import mse_splitter
+from . import gini_splitter
+from .basemodel import BaseModel
 
 class Tree(BaseModel):
 

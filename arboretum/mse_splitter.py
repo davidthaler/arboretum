@@ -8,8 +8,8 @@ date: September 2017
 '''
 import numpy as np
 import numba
-import tree_constants as tc
-import pdb
+from . import tree_constants as tc
+
 
 def split(x, y, max_features=-1, min_leaf=1):
     m, n = x.shape

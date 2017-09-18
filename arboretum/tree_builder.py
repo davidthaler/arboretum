@@ -10,7 +10,7 @@ date: August 2017
 '''
 import numpy as np
 import numba
-import tree_constants as tc
+from . import tree_constants as tc
 
 
 def build_tree(x, y, split_fn, max_features=-1, min_leaf=1, min_split=2, max_depth=-1, 

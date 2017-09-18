@@ -5,8 +5,8 @@ author: David Thaler
 date: September 2017
 '''
 import numpy as np
-import tree
-from basemodel import BaseModel
+from . import tree
+from .basemodel import BaseModel
 
 
 class Forest(BaseModel):

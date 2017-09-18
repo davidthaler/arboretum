@@ -8,9 +8,9 @@ import numpy as np
 import tree_builder
 import mse_splitter
 import gini_splitter
+from basemodel import BaseModel
 
-
-class Tree:
+class Tree(BaseModel):
 
     def __init__(self, split_fn, max_features=None, 
                 min_leaf=1, min_split=2, max_depth=None):

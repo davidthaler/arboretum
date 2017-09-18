@@ -10,13 +10,11 @@ date: August 2017
 '''
 import numpy as np
 import numba
-import gini_splitter
-import mse_splitter
 import tree_constants as tc
 
 
-def build_tree(x, y, max_features=-1, min_leaf=1, min_split=2, max_depth=-1, 
-                depth=0, node_num=0, criterion='gini'):
+def build_tree(x, y, split_fn, max_features=-1, min_leaf=1, min_split=2, max_depth=-1, 
+                depth=0, node_num=0):
     '''
     Recursively build a decision tree. 
     Returns a 2-D array of shape (num_nodes x 7) that describes the tree.
@@ -26,6 +24,8 @@ def build_tree(x, y, max_features=-1, min_leaf=1, min_split=2, max_depth=-1,
     Args:
         x: m x n numpy array of numeric features
         y: m-element 1-D numpy array of labels; must be 0-1.
+        split_fn: a function that takes x, y, max_features and min_leaf
+            and returns the best split feature and threshold.
         max_features: try up to this number of features per split
             default of -1 for all features
         min_leaf: each branch must have at least min_leaf samples
@@ -35,33 +35,25 @@ def build_tree(x, y, max_features=-1, min_leaf=1, min_split=2, max_depth=-1,
         depth: the depth of this node; the root is 0
         node_num: the node number of this node
             default 0 is for the root node
-        criterion: either 'gini' for classification or 'mse' for regression
-            default is 'gini'
 
     Returns:
         2-D numpy array of dtype 'float' with 
     '''
-    if criterion == 'gini':
-        split = gini_splitter.split
-    elif criterion == 'mse':
-        split = mse_splitter.split
-    else:
-        raise ValueError("'criterion' must be one of 'gini' or 'mse'")
     ct = len(y)
     val = y.sum() / ct
     if (ct < min_split) or (depth == max_depth):
         return np.array([[tc.NO_FEATURE, tc.NO_THR, node_num,
                          tc.NO_CHILD, tc.NO_CHILD, ct, val]])
-    feature, thr = split(x, y, max_features=max_features, min_leaf=min_leaf)
+    feature, thr = split_fn(x, y, max_features=max_features, min_leaf=min_leaf)
     if feature == tc.NO_FEATURE:
         return np.array([[feature, thr, node_num, tc.NO_CHILD, tc.NO_CHILD, ct, val]])
     mask = x[:, feature] <= thr
     left_root = node_num + 1
-    left_tree = build_tree(x[mask], y[mask], max_features, min_leaf, 
-                            min_split, max_depth, depth + 1, left_root, criterion)
+    left_tree = build_tree(x[mask], y[mask], split_fn, max_features, min_leaf, 
+                            min_split, max_depth, depth + 1, left_root)
     right_root = left_root + len(left_tree)
-    right_tree = build_tree(x[~mask], y[~mask], max_features, min_leaf, 
-                            min_split, max_depth, depth + 1, right_root, criterion)
+    right_tree = build_tree(x[~mask], y[~mask], split_fn, max_features, min_leaf, 
+                            min_split, max_depth, depth + 1, right_root)
     root = np.array([[feature, thr, node_num, left_root, right_root, ct, val]])
     return np.concatenate([root, left_tree, right_tree])
 

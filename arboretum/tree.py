@@ -6,11 +6,19 @@ date: September 2017
 '''
 import numpy as np
 import tree_builder
+import mse_splitter
+import gini_splitter
+
 
 class Tree:
 
-    def __init__(self, criterion):
-        self.criterion = criterion
+    def __init__(self, split_fn, max_features=None, 
+                min_leaf=1, min_split=2, max_depth=None):
+        self.split_fn = split_fn
+        self.min_leaf = min_leaf
+        self.min_split = min_split
+        self.max_features = -1 if max_features is None else max_features
+        self.max_depth = -1 if max_depth is None else max_depth
 
     def _check_x(self, x):
         if type(x) is not np.ndarray:
@@ -25,12 +33,11 @@ class Tree:
 
     def fit(self, x, y):
         self.n_features_ = x.shape[1]
-        self.tree_ = tree_builder.build_tree(x, y, 
-                                            max_features=self.max_features,
-                                            min_leaf=self.min_leaf,
-                                            min_split=self.min_split,
-                                            max_depth=self.max_depth,
-                                            criterion=self.criterion)
+        self.tree_ = tree_builder.build_tree(x, y, self.split_fn,
+                                             max_features=self.max_features,
+                                             min_leaf=self.min_leaf,
+                                             min_split=self.min_split,
+                                             max_depth=self.max_depth)
         return self
 
     def apply(self, x):
@@ -46,11 +53,11 @@ class Tree:
 class RegressionTree(Tree):
 
     def __init__(self, max_features=None, min_leaf=1, min_split=2, max_depth=None):
-        super().__init__(criterion='mse')
-        self.min_leaf = min_leaf
-        self.min_split = min_split
-        self.max_features = -1 if max_features is None else max_features
-        self.max_depth = -1 if max_depth is None else max_depth
+        super().__init__(split_fn=mse_splitter.split, 
+                         max_features=max_features, 
+                         min_leaf=min_leaf, 
+                         min_split=min_split, 
+                         max_depth=max_depth)
 
     def predict(self, x):
         return self.prediction_value(x)
@@ -59,11 +66,11 @@ class RegressionTree(Tree):
 class ClassificationTree(Tree):
 
     def __init__(self, max_features=None, min_leaf=1, min_split=2, max_depth=None):
-        super().__init__(criterion='gini')
-        self.min_leaf = min_leaf
-        self.min_split = min_split
-        self.max_features = -1 if max_features is None else max_features
-        self.max_depth = -1 if max_depth is None else max_depth
+        super().__init__(split_fn=gini_splitter.split, 
+                         max_features=max_features, 
+                         min_leaf=min_leaf, 
+                         min_split=min_split, 
+                         max_depth=max_depth)
 
     def predict_proba(self, x):
         return self.prediction_value(x)

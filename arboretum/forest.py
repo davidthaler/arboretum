@@ -5,24 +5,25 @@ author: David Thaler
 date: September 2017
 '''
 import numpy as np
-from tree import Tree
+import tree
+from basemodel import BaseModel
 
 
-class Forest:
+class Forest(BaseModel):
     '''
     Class Forest implements a random forest classifier using tree.Tree.
     This is a single-output, binary classifier, using gini impurity.
     '''
 
-    def __init__(self, n_trees=30, max_features=None, 
-                min_leaf=1, min_split=2, max_depth=None):
+    def __init__(self, base_estimator, n_trees, max_features, min_leaf, 
+                    min_split, max_depth):
+        self.base_estimator = base_estimator
         self.n_trees = n_trees
+        # Only needed to get __repr__ and get_params to work
         self.max_features = max_features
         self.min_leaf = min_leaf
         self.min_split = min_split
         self.max_depth = max_depth
-        self.estimator_params = ('max_features', 'min_leaf', 
-                                'min_split', 'max_depth')
     
     def fit(self, x, y):
         '''
@@ -39,22 +40,61 @@ class Forest:
         # check input
         n = len(y)
         self.estimators_ = []
-        params = {ep:getattr(self, ep) for ep in self.estimator_params}
+        est_params = self.base_estimator.get_params()
         all_idx = np.arange(n)
         oob_ct = np.zeros(n)
         oob_prob = np.zeros(n)
         for k in range(self.n_trees):
-            model = Tree(**params)
+            model = self.base_estimator.__class__(**est_params)
             boot_idx = np.random.randint(n, size=n)
             oob_idx = np.setdiff1d(all_idx, boot_idx)
             model.fit(x[boot_idx], y[boot_idx])
             self.estimators_.append(model)
             oob_ct[oob_idx] += 1
-            oob_prob[oob_idx] += model.predict_proba(x[oob_idx])
+            oob_prob[oob_idx] += model.prediction_value(x[oob_idx])
         # TODO: check for NaN
         self.oob_decision_function_ = oob_prob / oob_ct
         return self
 
+
+class RFRegressor(Forest):
+
+    def __init__(self, n_trees=30, max_features=None, min_leaf=1, 
+                    min_split=2, max_depth=None):
+        base_estimator = tree.RegressionTree(max_features=max_features,
+                                             min_leaf=min_leaf,
+                                             min_split=min_split,
+                                             max_depth=max_depth)
+        super().__init__(base_estimator, n_trees=n_trees,
+                        max_features=max_features, min_leaf=min_leaf,
+                        min_split=min_split, max_depth=max_depth)
+
+    def predict(self, x):
+        '''
+        Estimates target for each row in x.
+
+        Args:
+            x: Test data to predict; ndarray of shape (n_samples, n_features)
+
+        Returns:
+            array (n_samples,) of estimates of target for each row in x
+        '''
+        pred = np.zeros(len(x))
+        for model in self.estimators:
+            pred += model.predict(x)
+        return pred / self.n_trees
+
+class RFClassifier(Forest):
+
+    def __init__(self, n_trees=30, max_features=None, min_leaf=1, 
+                    min_split=2, max_depth=None):
+        base_estimator = tree.ClassificationTree(max_features=max_features,
+                                                 min_leaf=min_leaf,
+                                                 min_split=min_split,
+                                                 max_depth=max_depth)
+        super().__init__(base_estimator, n_trees=n_trees, 
+                        max_features=max_features, min_leaf=min_leaf,
+                        min_split=min_split, max_depth=max_depth)
 
     def predict_proba(self, x):
         '''
@@ -83,7 +123,7 @@ class Forest:
             x: Test data to predict; ndarray of shape (n_samples, n_features)
 
         Returns:
-            array of shape (n_samples, ) of class for each row
+            array of shape (n_samples, ) of class labels for each row
         '''
         # check input
-        return self.predict_proba(x).argmax(axis=1)
+        return (self.predict_proba(x) > 0.5).astype(int)

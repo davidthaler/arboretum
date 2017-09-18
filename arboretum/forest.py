@@ -15,11 +15,12 @@ class Forest(BaseModel):
     This is a single-output, binary classifier, using gini impurity.
     '''
 
+    estimator_params = ['max_features', 'min_leaf', 'min_split', 'max_depth']
+
     def __init__(self, base_estimator, n_trees, max_features, min_leaf, 
                     min_split, max_depth):
         self.base_estimator = base_estimator
         self.n_trees = n_trees
-        # Only needed to get __repr__ and get_params to work
         self.max_features = max_features
         self.min_leaf = min_leaf
         self.min_split = min_split
@@ -40,7 +41,7 @@ class Forest(BaseModel):
         # check input
         n = len(y)
         self.estimators_ = []
-        est_params = self.base_estimator.get_params()
+        est_params = {ep:getattr(self, ep) for ep in self.estimator_params}
         all_idx = np.arange(n)
         oob_ct = np.zeros(n)
         oob_prob = np.zeros(n)
@@ -61,10 +62,7 @@ class RFRegressor(Forest):
 
     def __init__(self, n_trees=30, max_features=None, min_leaf=1, 
                     min_split=2, max_depth=None):
-        base_estimator = tree.RegressionTree(max_features=max_features,
-                                             min_leaf=min_leaf,
-                                             min_split=min_split,
-                                             max_depth=max_depth)
+        base_estimator = tree.RegressionTree()
         super().__init__(base_estimator, n_trees=n_trees,
                         max_features=max_features, min_leaf=min_leaf,
                         min_split=min_split, max_depth=max_depth)
@@ -88,10 +86,7 @@ class RFClassifier(Forest):
 
     def __init__(self, n_trees=30, max_features=None, min_leaf=1, 
                     min_split=2, max_depth=None):
-        base_estimator = tree.ClassificationTree(max_features=max_features,
-                                                 min_leaf=min_leaf,
-                                                 min_split=min_split,
-                                                 max_depth=max_depth)
+        base_estimator = tree.ClassificationTree()
         super().__init__(base_estimator, n_trees=n_trees, 
                         max_features=max_features, min_leaf=min_leaf,
                         min_split=min_split, max_depth=max_depth)

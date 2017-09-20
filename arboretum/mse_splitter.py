@@ -11,6 +11,7 @@ import numba
 from . import tree_constants as tc
 
 
+@numba.jit(nopython=True)
 def split(x, y, max_features=-1, min_leaf=1):
     m, n = x.shape
     best_feature = tc.NO_FEATURE

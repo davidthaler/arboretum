@@ -78,7 +78,7 @@ class RFRegressor(Forest):
             array (n_samples,) of estimates of target for each row in x
         '''
         pred = np.zeros(len(x))
-        for model in self.estimators:
+        for model in self.estimators_:
             pred += model.predict(x)
         return pred / self.n_trees
 

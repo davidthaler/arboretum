@@ -26,7 +26,8 @@ class GBRegressor(BaseModel):
         n_subsample = int(np.round(self.subsample * n))
         self.estimators_ = []
         est_params = {ep:getattr(self, ep) for ep in self.estimator_params}
-        r = y
+        self.f0 = y.mean()
+        r = y - self.f0
         for k in range(self.n_trees):
             model = tree.RegressionTree(**est_params)
             idx = np.random.choice(n, size=n_subsample, replace=False)
@@ -38,10 +39,23 @@ class GBRegressor(BaseModel):
 
     # NB: this fails if learn_rate is changed by field access between fit and predict
     def predict(self, x):
-        pred = np.zeros(len(x))
+        pred = np.zeros(len(x)) + self.f0
         for model in self.estimators_:
             pred += self.learn_rate * model.predict(x)
         return pred
+
+    def staged_predict(self, x, predict_at=None):
+        if predict_at is None:
+            predict_at = 1 + np.arange(len(self.estimators_))
+        out = np.zeros((len(x), len(predict_at)))
+        pred = np.zeros(len(x)) + self.f0
+        j = 0
+        for k, model in enumerate(self.estimators_, 1):
+            pred += self.learn_rate * model.predict(x)
+            if k == predict_at[j]:
+                out[:, j] = pred
+                j += 1
+        return out
 
 
 class GBClassifier(BaseModel):
@@ -77,15 +91,38 @@ class GBClassifier(BaseModel):
             den0idx = (np.abs(den) < 1e-100)
             den[den0idx] = 1.
             vals = np.where(den0idx, 0, num/den)
-            model.tree_.value = vals
+            model.value = vals
             # adjust current prediction (log-odds, all x):
             f += self.learn_rate * model.predict(x)
             # compute new residual y - expit(f):
             r = y - expit(f)
         return self
 
-    def predict_proba(self, x):
+    def decision_function(self, x):
         pred = np.zeros(len(x)) + self.f0
         for model in self.estimators_:
             pred += self.learn_rate * model.predict(x)
-        return expit(pred)
+        return pred
+
+    def predict_proba(self, x):
+        return expit(self.decision_function(x))
+
+    def predict(self, x):
+        return (self.decision_function(x) > 0).astype(int)
+
+    def staged_decision_function(self, x, predict_at=None):
+        if predict_at is None:
+            predict_at = 1 + np.arange(len(self.estimators_))
+        out = np.zeros((len(x), len(predict_at)))
+        pred = np.zeros(len(x)) + self.f0
+        j = 0
+        for k, model in enumerate(self.estimators_, 1):
+            pred += self.learn_rate * model.predict(x)
+            if k == predict_at[j]:
+                out[:, j] = pred
+                j += 1
+        return out
+
+    def staged_predict_proba(self, x, predict_at=None):
+        return expit(self.staged_decision_function(x, predict_at))
+

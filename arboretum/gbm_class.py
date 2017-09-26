@@ -8,7 +8,7 @@ import numpy as np
 from . import tree
 from .basemodel import BaseModel
 from scipy.special import expit, logit
-from . import tree_constants as tc
+
 
 class GBClassifier(BaseModel):
 
@@ -43,7 +43,7 @@ class GBClassifier(BaseModel):
             den0idx = (np.abs(den) < 1e-100)
             den[den0idx] = 1.
             vals = np.where(den0idx, 0, num/den)
-            model.tree_[:, tc.VAL_COL] = vals
+            model.tree_.value = vals
             # adjust current prediction (log-odds, all x):
             f += self.learn_rate * model.predict(x)
             # compute new residual y - expit(f):

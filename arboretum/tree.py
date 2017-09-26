@@ -9,6 +9,8 @@ from . import tree_builder
 from . import mse_splitter
 from . import gini_splitter
 from .basemodel import BaseModel
+from . import tree_constants as tc
+
 
 class Tree(BaseModel):
 
@@ -48,6 +50,18 @@ class Tree(BaseModel):
         '''For classifiers, a prob. For regressors, an estimate.'''
         self._check_x(x)
         return tree_builder.prediction_value(self.tree_, x)
+
+    @property
+    def value(self):
+        return self.tree_[:, tc.VAL_COL]
+
+    @value.setter
+    def value(self, new_val):
+        if type(new_val) is not np.ndarray:
+            raise ValueError('new value must be ndarray')
+        if len(new_val) != len(self.tree_):
+            raise ValueError('new value has wrong shape')
+        self.tree_[:, tc.VAL_COL] = new_val
 
 
 class RegressionTree(Tree):

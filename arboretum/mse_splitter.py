@@ -12,15 +12,15 @@ from . import tree_constants as tc
 
 
 @numba.jit(nopython=True)
-def split(x, y, max_features=-1, min_leaf=1):
+def split(x, y, wts, max_features=-1, min_leaf=1):
     m, n = x.shape
     best_feature = tc.NO_FEATURE
     best_thr = tc.NO_THR
     improve = False
     if max_features < 1:
         max_features = n
-    ym = y.mean()
-    best_score = ((y - ym)**2).sum()
+    mu = (wts * y).sum() / wts.sum()
+    best_score = (wts * ((y - mu)**2)).sum()
     col_order = np.random.choice(np.arange(n), size=n, replace=False)
     for col_ct in range(n):
         if col_ct >= max_features and improve:
@@ -36,22 +36,23 @@ def split(x, y, max_features=-1, min_leaf=1):
         sort_idx = f.argsort()
         fsort = f[sort_idx]
         ysort = y[sort_idx]
+        wsort = wts[sort_idx]
         ntot = np.zeros(m)
         uniq = np.zeros(m)
         ysum = np.zeros(m)
         yssq = np.zeros(m)
         uniq[0] = fsort[0]                  # fsort[0] is unique
         num_uniq = 1
-        ntot[0] = 1
-        ysum[0] += ysort[0]
-        yssq[0] += ysort[0]**2
+        ntot[0] = wsort[0]
+        ysum[0] += wsort[0] * ysort[0]
+        yssq[0] += wsort[0] * (ysort[0]**2)
         for k in range(1, m):
             if fsort[k] != fsort[k-1]:      # fsort[k] is new
                 uniq[num_uniq] = fsort[k]
                 num_uniq += 1
-            ntot[num_uniq - 1] += 1
-            ysum[num_uniq - 1] += ysort[k]
-            yssq[num_uniq - 1] += ysort[k]**2
+            ntot[num_uniq - 1] += wsort[k]
+            ysum[num_uniq - 1] += wsort[k] * ysort[k]
+            yssq[num_uniq - 1] += wsort[k] * (ysort[k]**2)
         uniq = uniq[:num_uniq]
         ysum = ysum[:num_uniq]
         yssq = yssq[:num_uniq]
@@ -59,9 +60,9 @@ def split(x, y, max_features=-1, min_leaf=1):
         
         # Get cumulative counts/sum/ssq for each possible split
         nleft = ntot.cumsum()
-        nright = m - nleft
+        nright = ntot.sum() - nleft
         ysum_left = ysum.cumsum()
-        ysum_right = y.sum() - ysum_left
+        ysum_right = ysum.sum() - ysum_left
         yssq_left = yssq.cumsum()
         yssq_right = yssq.sum() - yssq_left
 

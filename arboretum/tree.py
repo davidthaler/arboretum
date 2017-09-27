@@ -33,9 +33,10 @@ class Tree(BaseModel):
             raise ValueError('Tree fitted for %d-dimensions, but data has %d' 
                                 % (self.n_features, x.shape[1]))
 
-    def fit(self, x, y):
+    def fit(self, x, y, weights=None):
         self.n_features_ = x.shape[1]
         self.tree_ = tree_builder.build_tree(x, y, self.split_fn,
+                                             wts=weights,
                                              max_features=self.max_features,
                                              min_leaf=self.min_leaf,
                                              min_split=self.min_split,

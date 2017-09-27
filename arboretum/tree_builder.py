@@ -13,8 +13,8 @@ import numba
 from . import tree_constants as tc
 
 
-def build_tree(x, y, split_fn, max_features=-1, min_leaf=1, min_split=2, max_depth=-1, 
-                depth=0, node_num=0):
+def build_tree(x, y, split_fn, wts=None, max_features=-1, min_leaf=-1, 
+                min_split=2, max_depth=-1, depth=0, node_num=0):
     '''
     Recursively build a decision tree. 
     Returns a 2-D array of shape (num_nodes x 7) that describes the tree.
@@ -26,10 +26,11 @@ def build_tree(x, y, split_fn, max_features=-1, min_leaf=1, min_split=2, max_dep
         y: m-element 1-D numpy array of labels; must be 0-1.
         split_fn: a function that takes x, y, max_features and min_leaf
             and returns the best split feature and threshold.
+        wts: sample weights, default of None for all 1's
         max_features: try up to this number of features per split
             default of -1 for all features
-        min_leaf: each branch must have at least min_leaf samples
-            default 1
+        min_leaf: min sample weight for a leaf
+            default of -1 for wts.min(), which is 1 if wts is None
         min_split: do not split node if it has less than `min_split` samples
         max_depth: stop at this depth; default of -1 for no depth limit
         depth: the depth of this node; the root is 0
@@ -39,22 +40,24 @@ def build_tree(x, y, split_fn, max_features=-1, min_leaf=1, min_split=2, max_dep
     Returns:
         2-D numpy array of dtype 'float' with 
     '''
-    ct = len(y)
-    val = y.sum() / ct
-    if (ct < min_split) or (depth == max_depth):
+    if wts is None:
+        wts = np.ones_like(y)
+    tot_wt = wts.sum()
+    val = (y * wts).sum() / tot_wt
+    if (tot_wt < min_split) or (depth == max_depth):
         return np.array([[tc.NO_FEATURE, tc.NO_THR, node_num,
-                         tc.NO_CHILD, tc.NO_CHILD, ct, val]])
-    feature, thr = split_fn(x, y, max_features=max_features, min_leaf=min_leaf)
+                         tc.NO_CHILD, tc.NO_CHILD, tot_wt, val]])
+    feature, thr = split_fn(x, y, wts, max_features=max_features, min_leaf=min_leaf)
     if feature == tc.NO_FEATURE:
-        return np.array([[feature, thr, node_num, tc.NO_CHILD, tc.NO_CHILD, ct, val]])
+        return np.array([[feature, thr, node_num, tc.NO_CHILD, tc.NO_CHILD, tot_wt, val]])
     mask = x[:, feature] <= thr
     left_root = node_num + 1
-    left_tree = build_tree(x[mask], y[mask], split_fn, max_features, min_leaf, 
+    left_tree = build_tree(x[mask], y[mask], split_fn, wts[mask], max_features, min_leaf, 
                             min_split, max_depth, depth + 1, left_root)
     right_root = left_root + len(left_tree)
-    right_tree = build_tree(x[~mask], y[~mask], split_fn, max_features, min_leaf, 
+    right_tree = build_tree(x[~mask], y[~mask], split_fn, wts[~mask], max_features, min_leaf, 
                             min_split, max_depth, depth + 1, right_root)
-    root = np.array([[feature, thr, node_num, left_root, right_root, ct, val]])
+    root = np.array([[feature, thr, node_num, left_root, right_root, tot_wt, val]])
     return np.concatenate([root, left_tree, right_tree])
 
 

@@ -26,7 +26,7 @@ class Forest(BaseModel):
         self.min_split = min_split
         self.max_depth = max_depth
     
-    def fit(self, x, y):
+    def fit(self, x, y, weights=None):
         '''
         Fits a random forest using tree.Tree to the given data. 
         Also sets the oob_decision_function_ attribute.
@@ -34,10 +34,14 @@ class Forest(BaseModel):
         Args:
             x: Training data features; ndarray of shape (n_samples, n_features)
             y: Training set labels; shape is (n_samples, )
+            weights: sample weights; shape is (n_samples, )
+                default is None for equal weights/unweighted
 
         Returns:
             Returns self.
         '''
+        if weights is None:
+            weights = np.ones_like(y)
         # check input
         n = len(y)
         self.estimators_ = []
@@ -49,7 +53,7 @@ class Forest(BaseModel):
             model = self.base_estimator.__class__(**est_params)
             boot_idx = np.random.randint(n, size=n)
             oob_idx = np.setdiff1d(all_idx, boot_idx)
-            model.fit(x[boot_idx], y[boot_idx])
+            model.fit(x[boot_idx], y[boot_idx], weights=weights[boot_idx])
             self.estimators_.append(model)
             oob_ct[oob_idx] += 1
             oob_prob[oob_idx] += model.prediction_value(x[oob_idx])

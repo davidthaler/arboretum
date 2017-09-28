@@ -21,17 +21,19 @@ class GBRegressor(BaseModel):
         self.subsample = subsample
         self.max_features = max_features
 
-    def fit(self, x, y):
+    def fit(self, x, y, weights=None):
         n = len(y)
+        if weights is None:
+            weights = np.ones_like(y)
         n_subsample = int(np.round(self.subsample * n))
         self.estimators_ = []
         est_params = {ep:getattr(self, ep) for ep in self.estimator_params}
-        self.f0 = y.mean()
+        self.f0 = np.average(y, weights=weights)
         r = y - self.f0
         for k in range(self.n_trees):
             model = tree.RegressionTree(**est_params)
             idx = np.random.choice(n, size=n_subsample, replace=False)
-            model.fit(x[idx], r[idx])
+            model.fit(x[idx], r[idx], weights[idx])
             self.estimators_.append(model)
             step_k = self.learn_rate * model.predict(x)
             r = r - step_k
@@ -69,12 +71,14 @@ class GBClassifier(BaseModel):
         self.subsample = subsample
         self.max_features = max_features
 
-    def fit(self, x, y):
+    def fit(self, x, y, weights=None):
         n = len(y)
+        if weights is None:
+            weights = np.ones_like(y)
         self.estimators_ = []
         n_subsample = int(np.round(self.subsample * n))
         est_params = {ep:getattr(self, ep) for ep in self.estimator_params}
-        p = y.mean()            
+        p = np.average(y, weights=weights)
         self.f0 = logit(p)               # We'll need this to predict
         r = y - p                        # initial residual
         f = self.f0                      # accumulated log-odds prediction
@@ -82,12 +86,12 @@ class GBClassifier(BaseModel):
             model = tree.RegressionTree(**est_params)
             self.estimators_.append(model)
             idx = np.random.choice(n, size=n_subsample, replace=False)
-            model.fit(x[idx], r[idx])
+            model.fit(x[idx], r[idx], weights[idx])
             # adjust leaf values (log-odds, in-subsample)
             leaves = model.apply(x[idx])
-            num = np.bincount(leaves, weights=r[idx])
-            den = np.bincount(leaves, 
-                weights=(y[idx] - r[idx]) * (1 - y[idx] + r[idx]))
+            num = np.bincount(leaves, weights=weights[idx] * r[idx])
+            den_val = weights[idx] * (y[idx] - r[idx]) * (1 - y[idx] + r[idx])
+            den = np.bincount(leaves, weights=den_val)
             den0idx = (np.abs(den) < 1e-100)
             den[den0idx] = 1.
             vals = np.where(den0idx, 0, num/den)

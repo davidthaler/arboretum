@@ -90,6 +90,7 @@ def split(x, y,  wts, max_features=-1, min_leaf=-1):
         npos_right = ywt.sum() - npos_left
         nneg_right = nright - npos_right
 
+        # TODO: masking is much slower that constant-slicing
         # trim to valid splits (at least min_leaf both sides)
         mask = (nleft >= min_leaf) & (nright >= min_leaf)
         nleft = nleft[mask]

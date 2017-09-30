@@ -8,5 +8,5 @@ setup(
     author='David Thaler',
     author_email='davidthaler@gmail.com',
     license='MIT',
-    packages=['arboretum']
+    packages=['arboretum', 'arboretum.datasets', 'arboretum.tests']
 )

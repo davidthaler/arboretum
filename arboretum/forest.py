@@ -11,8 +11,8 @@ from .basemodel import BaseModel
 
 class Forest(BaseModel):
     '''
-    Class Forest implements a random forest classifier using tree.Tree.
-    This is a single-output, binary classifier, using gini impurity.
+    Class Forest implements random forest classification and regression 
+    models using trees from arboretum.tree.
     '''
 
     estimator_params = ['max_features', 'min_leaf', 'min_split', 'max_depth']
@@ -38,7 +38,7 @@ class Forest(BaseModel):
                 default is None for equal weights/unweighted
 
         Returns:
-            Returns self.
+            Returns self, the fitted estimator
         '''
         if weights is None:
             weights = np.ones_like(y)
@@ -79,7 +79,22 @@ class Forest(BaseModel):
 
 
 class RFRegressor(Forest):
+    '''
+    RFClassifier implements a random forest regression model using an 
+    arboretum.tree.RegressionTree for its basis functions.
+    This is a single-output model that minimizes mse.
 
+    Args:
+        n_trees: (int) number of trees to fit
+        max_features: (int) number of features to try at each split
+        min_leaf: if weights are passed to fit(), this is the minimum sample
+            weight in a leaf node; if unweighted, it is the minimum number 
+            of samples in a leaf node.
+        min_split: if weights are passed to fit(), this is the minimum sample
+            weight for splitting a node; if unweighted, it is the minimum
+            number of samples needed to split a node.
+        max_depth: (int) the maximum depth of the trees grown.
+    '''
     def __init__(self, n_trees=30, max_features=None, min_leaf=1, 
                     min_split=2, max_depth=None):
         base_estimator = tree.RegressionTree()
@@ -101,6 +116,22 @@ class RFRegressor(Forest):
 
 
 class RFClassifier(Forest):
+    '''
+    RFClassifier implements a random forest classifier using an 
+    arboretum.tree.ClassificationTree for its basis functions.
+    This is a single-output, binary classifier, using gini impurity.
+
+    Args:
+        n_trees: (int) number of trees to fit
+        max_features: (int) number of features to try at each split
+        min_leaf: if weights are passed to fit(), this is the minimum sample
+            weight in a leaf node; if unweighted, it is the minimum number 
+            of samples in a leaf node.
+        min_split: if weights are passed to fit(), this is the minimum sample
+            weight for splitting a node; if unweighted, it is the minimum
+            number of samples needed to split a node.
+        max_depth: (int) the maximum depth of the trees grown.
+    '''
 
     def __init__(self, n_trees=30, max_features=None, min_leaf=1, 
                     min_split=2, max_depth=None):
@@ -111,8 +142,7 @@ class RFClassifier(Forest):
 
     def predict_proba(self, x):
         '''
-        Predicts probabilities of the two classes as the mean probability 
-        predicted by each tree in the forest.
+        Predicts probabilities of the positive class for each row in x.
 
         Args:
             x: Test data to predict; ndarray of shape (n_samples, n_features)

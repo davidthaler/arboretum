@@ -10,19 +10,92 @@ from .basemodel import BaseModel
 from scipy.special import expit, logit
 
 
-class GBRegressor(BaseModel):
+class GBM(BaseModel):
+    '''
+    GBM is a base class for gradient boosting models.
+
+    Args:
+        n_trees: (int) number of trees to fit
+        learn_rate: the step size for the model
+        max_depth: (int) the maximum depth of the trees grown.
+        subsample: (float in (0.0, 1.0]) fraction of rows to sample 
+            for training each tree
+        max_features: (int) number of features to try at each split
+    '''
 
     estimator_params = ['max_features', 'max_depth']
 
-    def __init__(self, n_trees=100, learn_rate=0.1,
-                max_depth=3, subsample=1.0, max_features=-1):
+    def __init__(self, n_trees=100, learn_rate=0.1, max_depth=3,
+                    subsample=1.0, max_features=-1):
         self.n_trees = n_trees
         self.learn_rate = learn_rate
         self.max_depth = max_depth
         self.subsample = subsample
         self.max_features = max_features
 
+    def decision_function(self, x):
+        '''
+        Returns the decision function for each row in x. 
+        In a regression model, this is the estimate of the targets. 
+        In a classification model, it is the estimated log-odds of the
+        positive class.
+
+        Args:
+            x: Test data to predict; ndarray of shape (n_samples, n_features)
+
+        Returns:
+            array (n_samples,) decision function for each row in x
+        '''
+        pred = np.zeros(len(x)) + self.f0
+        for model in self.estimators_:
+            pred += self.learn_rate * model.predict(x)
+        return pred
+
+    def staged_decision_function(self, x, predict_at=None):
+        '''
+        For each entry in predict_at, returns the decision function for each
+        row of x, using only the first predict_at[k] trees of the model.
+        Values in predict at should be ascending, and for all k:
+        0 < predict_at[k] <= n_trees
+
+        Args:
+            x: Test data to predict; ndarray of shape (n_samples, n_features)
+            predict_at: (list of int) a list of numbers of trees to use in 
+                predicting with a partial model. Values should be in ascending 
+                order and 0 < predict_at[k] <= n_trees for all k.
+
+        Returns:
+            array (n_samples, n_steps) decision function for each row in x
+            at each iteration count in predict_at
+        '''
+        if predict_at is None:
+            predict_at = 1 + np.arange(len(self.estimators_))
+        out = np.zeros((len(x), len(predict_at)))
+        pred = np.zeros(len(x)) + self.f0
+        j = 0
+        for k, model in enumerate(self.estimators_, 1):
+            pred += self.learn_rate * model.predict(x)
+            if k == predict_at[j]:
+                out[:, j] = pred
+                j += 1
+        return out
+
+
+class GBRegressor(GBM):
+
     def fit(self, x, y, weights=None):
+        '''
+        Fits a least-squares gradient boosting model using x and y.
+
+        Args:
+            x: Training data features; ndarray of shape (n_samples, n_features)
+            y: Training set labels; shape is (n_samples, )
+            weights: sample weights; shape is (n_samples, )
+                default is None for equal weights/unweighted
+
+        Returns:
+            Returns self, the fitted estimator
+        '''
         n = len(y)
         if weights is None:
             weights = np.ones_like(y)
@@ -40,40 +113,51 @@ class GBRegressor(BaseModel):
             r = r - step_k
         return self
 
-    # NB: this fails if learn_rate is changed by field access between fit and predict
     def predict(self, x):
-        pred = np.zeros(len(x)) + self.f0
-        for model in self.estimators_:
-            pred += self.learn_rate * model.predict(x)
-        return pred
+        '''
+        Estimates target for each row in x.
+
+        Args:
+            x: Test data to predict; ndarray of shape (n_samples, n_features)
+
+        Returns:
+            array (n_samples,) of estimates of target for each row in x
+        '''
+        return self.decision_function(x)
 
     def staged_predict(self, x, predict_at=None):
-        if predict_at is None:
-            predict_at = 1 + np.arange(len(self.estimators_))
-        out = np.zeros((len(x), len(predict_at)))
-        pred = np.zeros(len(x)) + self.f0
-        j = 0
-        for k, model in enumerate(self.estimators_, 1):
-            pred += self.learn_rate * model.predict(x)
-            if k == predict_at[j]:
-                out[:, j] = pred
-                j += 1
-        return out
+        '''
+        For each entry in predict_at, returns the regression estimate for each
+        row of x, using only the first predict_at trees of the model.
+
+        Args:
+            x: Test data to predict; ndarray of shape (n_samples, n_features)
+            predict_at: (list of int) a list of numbers of trees to use in 
+                predicting with a partial model. Values should be in ascending 
+                order and 0 < predict_at <= n_trees.
+
+        Returns:
+            array (n_samples, n_steps) regression estimate for each row in x
+            at each iteration count in predict_at
+        '''
+        return self.staged_decision_function(x, predict_at)
 
 
-class GBClassifier(BaseModel):
-
-    estimator_params = ['max_features', 'max_depth']
-
-    def __init__(self, n_trees=100, learn_rate=0.1,
-                max_depth=3, subsample=1.0, max_features=-1):
-        self.n_trees = n_trees
-        self.learn_rate = learn_rate
-        self.max_depth = max_depth
-        self.subsample = subsample
-        self.max_features = max_features
+class GBClassifier(GBM):
 
     def fit(self, x, y, weights=None):
+        '''
+        Fits a binary classifier using gradient boosting and bernoulli loss.
+
+        Args:
+            x: Training data features; ndarray of shape (n_samples, n_features)
+            y: Training set labels; shape is (n_samples, )
+            weights: sample weights; shape is (n_samples, )
+                default is None for equal weights/unweighted
+
+        Returns:
+            Returns self, the fitted estimator
+        '''
         n = len(y)
         if weights is None:
             weights = np.ones_like(y)
@@ -104,31 +188,45 @@ class GBClassifier(BaseModel):
             r = y - expit(f)
         return self
 
-    def decision_function(self, x):
-        pred = np.zeros(len(x)) + self.f0
-        for model in self.estimators_:
-            pred += self.learn_rate * model.predict(x)
-        return pred
-
     def predict_proba(self, x):
+        '''
+        Predicts probabilities of the positve class for each row in x
+
+        Args:
+            x: Test data to predict; ndarray of shape (n_samples, n_features)
+
+        Returns:
+            array of shape (n_samples,) of probabilities for class 1.
+        '''
         return expit(self.decision_function(x))
 
     def predict(self, x):
+        '''
+        Estimates target label for each row in x.
+
+        Args:
+            x: Test data to predict; ndarray of shape (n_samples, n_features)
+
+        Returns:
+            array (n_samples,) of estimates of target for each row in x
+        '''
         return (self.decision_function(x) > 0).astype(int)
 
-    def staged_decision_function(self, x, predict_at=None):
-        if predict_at is None:
-            predict_at = 1 + np.arange(len(self.estimators_))
-        out = np.zeros((len(x), len(predict_at)))
-        pred = np.zeros(len(x)) + self.f0
-        j = 0
-        for k, model in enumerate(self.estimators_, 1):
-            pred += self.learn_rate * model.predict(x)
-            if k == predict_at[j]:
-                out[:, j] = pred
-                j += 1
-        return out
-
     def staged_predict_proba(self, x, predict_at=None):
+        '''
+        For each entry in predict_at, returns the estimated probability for
+        the positive class for each row of x, using only the first predict_at
+        trees of the model.
+
+        Args:
+            x: Test data to predict; ndarray of shape (n_samples, n_features)
+            predict_at: (list of int) a list of numbers of trees to use in 
+                predicting with a partial model. Values should be in ascending 
+                order and 0 < predict_at <= n_trees.
+
+        Returns:
+            array (n_samples, n_steps) positive class probability for each row
+            in x at each iteration count in predict_at
+        '''
         return expit(self.staged_decision_function(x, predict_at))
 

@@ -42,7 +42,6 @@ class Forest(BaseModel):
         '''
         if weights is None:
             weights = np.ones_like(y)
-        # check input
         n = len(y)
         self.estimators_ = []
         est_params = {ep:getattr(self, ep) for ep in self.estimator_params}
@@ -56,10 +55,27 @@ class Forest(BaseModel):
             model.fit(x[boot_idx], y[boot_idx], weights=weights[boot_idx])
             self.estimators_.append(model)
             oob_ct[oob_idx] += 1
-            oob_prob[oob_idx] += model.prediction_value(x[oob_idx])
+            oob_prob[oob_idx] += model.decision_function(x[oob_idx])
         # TODO: check for NaN
         self.oob_decision_function_ = oob_prob / oob_ct
         return self
+
+    def decision_function(self, x):
+        '''
+        Returns the decision function for each row in x. In regression trees,
+        this is an estimate. In classification trees, it is a probability.
+        In either case, it is the average over the trees in this forest.
+
+        Args:
+            x: Test data to predict; ndarray of shape (n_samples, n_features)
+
+        Returns:
+            array (n_samples,) decision function for each row in x
+        '''
+        dv = np.zeros(len(x))
+        for model in self.estimators_:
+            dv += model.decision_function(x)
+        return dv / self.n_trees
 
 
 class RFRegressor(Forest):
@@ -81,10 +97,8 @@ class RFRegressor(Forest):
         Returns:
             array (n_samples,) of estimates of target for each row in x
         '''
-        pred = np.zeros(len(x))
-        for model in self.estimators_:
-            pred += model.predict(x)
-        return pred / self.n_trees
+        return self.decision_function(x)
+
 
 class RFClassifier(Forest):
 
@@ -106,12 +120,7 @@ class RFClassifier(Forest):
         Returns:
             array of shape (n_samples,) of probabilities for class 1.
         '''
-        # check input
-        prob = np.zeros(len(x))
-        for model in self.estimators_:
-            prob += model.predict_proba(x)
-        return prob / self.n_trees
-
+        return self.decision_function(x)
 
     def predict(self, x):
         '''
@@ -124,5 +133,4 @@ class RFClassifier(Forest):
         Returns:
             array of shape (n_samples, ) of class labels for each row
         '''
-        # check input
         return (self.predict_proba(x) > 0.5).astype(int)

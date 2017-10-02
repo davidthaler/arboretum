@@ -13,6 +13,30 @@ from . import tree_constants as tc
 
 @numba.jit(nopython=True)
 def split(x, y, wts, max_features=-1, min_leaf=1):
+    '''
+    Given features x and labels y, find the feature index and threshold for a
+    split that produces the largest reduction in residual sum of squares.
+    Each side of the split must have at least min_leaf samples or min_leaf
+    total sample weight.
+
+    Note:
+        If no valid split is found after max_features, and max_features is less
+        than the number of features, splitter will continue to try features, one
+        at a time, in random order, until a valid split is found, or until all 
+        features have been tried.
+
+    Args:
+        x: m x n numpy array of numeric features
+        y: m-element 1-D numpy array of regression targets
+        wts: m-element 1-D array of sample weights, use ones if unweighted
+        max_features: try up to this number of features per split
+            default of -1 for all features
+        min_leaf: min sample weight for a leaf or minimum samples in a leaf
+            if unweighted; default of -1 for wts.min()
+
+    Returns:
+        2-tuple of feature index and split threshold of best split.
+    '''
     m, n = x.shape
     best_feature = tc.NO_FEATURE
     best_thr = tc.NO_THR

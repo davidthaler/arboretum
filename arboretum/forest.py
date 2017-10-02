@@ -6,7 +6,7 @@ date: September 2017
 '''
 import numpy as np
 from . import tree
-from .basemodel import BaseModel
+from .base import BaseModel
 
 
 class Forest(BaseModel):
@@ -43,6 +43,7 @@ class Forest(BaseModel):
         if weights is None:
             weights = np.ones_like(y)
         n = len(y)
+        self.n_features_ = x.shape[1]
         self.estimators_ = []
         est_params = {ep:getattr(self, ep) for ep in self.estimator_params}
         all_idx = np.arange(n)
@@ -72,6 +73,7 @@ class Forest(BaseModel):
         Returns:
             array (n_samples,) decision function for each row in x
         '''
+        self._predict_check(x)
         dv = np.zeros(len(x))
         for model in self.estimators_:
             dv += model.decision_function(x)

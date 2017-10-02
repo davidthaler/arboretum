@@ -6,7 +6,7 @@ date: September 2017
 '''
 import numpy as np
 from . import tree
-from .basemodel import BaseModel
+from .base import BaseModel
 from scipy.special import expit, logit
 
 
@@ -46,6 +46,7 @@ class GBM(BaseModel):
         Returns:
             array (n_samples,) decision function for each row in x
         '''
+        self._predict_check(x)
         pred = np.zeros(len(x)) + self.f0
         for model in self.estimators_:
             pred += self.learn_rate * model.predict(x)
@@ -68,6 +69,7 @@ class GBM(BaseModel):
             array (n_samples, n_steps) decision function for each row in x
             at each iteration count in predict_at
         '''
+        self._predict_check(x)
         if predict_at is None:
             predict_at = 1 + np.arange(len(self.estimators_))
         out = np.zeros((len(x), len(predict_at)))
@@ -97,6 +99,7 @@ class GBRegressor(GBM):
             Returns self, the fitted estimator
         '''
         n = len(y)
+        self.n_features_ = x.shape[1]
         if weights is None:
             weights = np.ones_like(y)
         n_subsample = int(np.round(self.subsample * n))
@@ -159,6 +162,7 @@ class GBClassifier(GBM):
             Returns self, the fitted estimator
         '''
         n = len(y)
+        self.n_features_ = x.shape[1]
         if weights is None:
             weights = np.ones_like(y)
         self.estimators_ = []

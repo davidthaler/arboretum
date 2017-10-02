@@ -8,12 +8,28 @@ import numpy as np
 from . import tree_builder
 from . import mse_splitter
 from . import gini_splitter
-from .basemodel import BaseModel
+from .base import BaseModel
 from . import tree_constants as tc
 
 
 class Tree(BaseModel):
+    '''
+    Tree is a superclass for trees. It takes a splitter as a constructor
+    parameter that determines what criterion it minimizes.
 
+    Args:
+        split_fn: function or callable that takes training data, labels, 
+            sample weights and the min_leaf and max_features parameters
+            (explained below) and returns the best split feature and threshold.
+        max_features: (int) number of features to try at each split
+        min_leaf: if weights are passed to fit(), this is the minimum sample
+            weight in a leaf node; if unweighted, it is the minimum number 
+            of samples in a leaf node.
+        min_split: if weights are passed to fit(), this is the minimum sample
+            weight for splitting a node; if unweighted, it is the minimum
+            number of samples needed to split a node.
+        max_depth: (int) the maximum depth of this tree.
+    '''
     def __init__(self, split_fn, max_features=None, 
                 min_leaf=1, min_split=2, max_depth=None):
         self.split_fn = split_fn
@@ -22,18 +38,19 @@ class Tree(BaseModel):
         self.max_features = -1 if max_features is None else max_features
         self.max_depth = -1 if max_depth is None else max_depth
 
-    def _check_x(self, x):
-        if type(x) is not np.ndarray:
-            raise ValueError('Tree requires numpy array input')
-        if x.ndim != 2:
-            raise ValueError('Prediction input must be 2-D array')
-        if not hasattr(self, 'n_features_'):
-            raise Exception('Predict called before fit.')
-        if x.shape[1] != self.n_features_:
-            raise ValueError('Tree fitted for %d-dimensions, but data has %d' 
-                                % (self.n_features, x.shape[1]))
-
     def fit(self, x, y, weights=None):
+        '''
+        Fits classification or regression trees using x, y and the weights.
+
+        Args:
+            x: Training data features; ndarray of shape (n_samples, n_features)
+            y: Training set labels; shape is (n_samples, )
+            weights: sample weights; shape is (n_samples, )
+                default is None for equal weights/unweighted
+
+        Returns:
+            Returns self, the fitted estimator
+        '''
         self.n_features_ = x.shape[1]
         self.tree_ = tree_builder.build_tree(x, y, self.split_fn,
                                              wts=weights,
@@ -44,20 +61,52 @@ class Tree(BaseModel):
         return self
 
     def apply(self, x):
-        self._check_x(x)
+        '''
+        Finds the node number in the tree that each instance in x lands in.
+
+        Args:
+            x: m x n numpy array of numeric features
+
+        Returns:
+            1-D numpy array (dtype int) of leaf node numbers for each point in x.
+        '''
+        self._predict_check(x)
         return tree_builder.apply(self.tree_, x)
 
     def decision_function(self, x):
-        '''For classifiers, a prob. For regressors, an estimate.'''
-        self._check_x(x)
+        '''
+        Returns the decision function for each row in x. 
+        In a regression model, this is the estimate of the targets. 
+        In a classification model, it is the estimated probability of the
+        positive class.
+
+        Args:
+            x: Test data to predict; ndarray of shape (n_samples, n_features)
+
+        Returns:
+            array (n_samples,) decision function for each row in x
+        '''
+        self._predict_check(x)
         return tree_builder.prediction_value(self.tree_, x)
 
     @property
     def value(self):
+        '''
+        The decision function value for each leaf node in this tree.
+
+        Returns:
+            1-D numpy array of size (n_nodes) of leaf decision values
+        '''
         return self.tree_[:, tc.VAL_COL]
 
     @value.setter
     def value(self, new_val):
+        '''
+        Set the decision function value for each leaf node in this tree.
+
+        Args:
+            new_val: 1-D numpy array of size (n_nodes, ) of new leaf values
+        '''
         if type(new_val) is not np.ndarray:
             raise ValueError('new value must be ndarray')
         if len(new_val) != len(self.tree_):
@@ -66,6 +115,19 @@ class Tree(BaseModel):
 
 
 class RegressionTree(Tree):
+    '''
+    RegressionTree implements a regression tree minimizing mean squared error.
+
+    Args:
+        max_features: (int) number of features to try at each split
+        min_leaf: if weights are passed to fit(), this is the minimum sample
+            weight in a leaf node; if unweighted, it is the minimum number 
+            of samples in a leaf node.
+        min_split: if weights are passed to fit(), this is the minimum sample
+            weight for splitting a node; if unweighted, it is the minimum
+            number of samples needed to split a node.
+        max_depth: (int) the maximum depth of this tree.
+    '''
 
     def __init__(self, max_features=None, min_leaf=1, min_split=2, max_depth=None):
         super().__init__(split_fn=mse_splitter.split, 
@@ -75,10 +137,32 @@ class RegressionTree(Tree):
                          max_depth=max_depth)
 
     def predict(self, x):
+        '''
+        Estimates target for each row in x.
+
+        Args:
+            x: Test data to predict; ndarray of shape (n_samples, n_features)
+
+        Returns:
+            array (n_samples,) of estimates of target for each row in x
+        '''
         return self.decision_function(x)
 
 
 class ClassificationTree(Tree):
+    '''
+    ClassificationTree is a classification tree minimizing gini impurity.
+
+    Args:
+        max_features: (int) number of features to try at each split
+        min_leaf: if weights are passed to fit(), this is the minimum sample
+            weight in a leaf node; if unweighted, it is the minimum number 
+            of samples in a leaf node.
+        min_split: if weights are passed to fit(), this is the minimum sample
+            weight for splitting a node; if unweighted, it is the minimum
+            number of samples needed to split a node.
+        max_depth: (int) the maximum depth of this tree.
+    '''
 
     def __init__(self, max_features=None, min_leaf=1, min_split=2, max_depth=None):
         super().__init__(split_fn=gini_splitter.split, 
@@ -88,7 +172,25 @@ class ClassificationTree(Tree):
                          max_depth=max_depth)
 
     def predict_proba(self, x):
+        '''
+        Predicts probabilities of the positve class for each row in x
+
+        Args:
+            x: Test data to predict; ndarray of shape (n_samples, n_features)
+
+        Returns:
+            array of shape (n_samples,) of probabilities for class 1.
+        '''
         return self.decision_function(x)
 
     def predict(self, x):
+        '''
+        Predicts class membership for the rows in x.
+
+        Args:
+            x: Test data to predict; ndarray of shape (n_samples, n_features)
+
+        Returns:
+            array of shape (n_samples, ) of class labels for each row
+        '''
         return (self.predict_proba(x) > 0.5).astype(int)

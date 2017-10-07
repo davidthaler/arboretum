@@ -36,7 +36,7 @@ def split(x, y,  wts, max_features=-1, min_leaf=-1):
         2-tuple of feature index and split threshold of best split.
     '''
     m, n = x.shape
-    NO_SPLIT = (tc.NO_FEATURE, tc.NO_THR, 0.)
+    NO_SPLIT = (tc.NO_FEATURE, tc.NO_THR)
     improve = False
     if min_leaf == -1:              # not set
         min_leaf = wts.min()        # wts is ones if unweighted
@@ -52,11 +52,11 @@ def split(x, y,  wts, max_features=-1, min_leaf=-1):
     # a code optimization for pure nodes
     if node_score==0:
         return NO_SPLIT
-    col_order = np.random.choice(np.arange(n), size=n, replace=False)
-    
+
     # Stores score, threshold for each feature (1 > max value for gini)
     results = np.ones((n, 2))
-    
+
+    col_order = np.random.choice(np.arange(n), size=n, replace=False)
     for col_ct in range(n):
         if col_ct >= max_features and improve:
             break
@@ -93,16 +93,12 @@ def split(x, y,  wts, max_features=-1, min_leaf=-1):
 
         # trim to valid splits (at least min_leaf both sides)
         mask = (nleft >= min_leaf) & (nright >= min_leaf)
-        # There must be at least one value on each side, 
-        # so the last position is not valid, 
-        # as there would be an empty right branch
+        # There must be at least one value on each side
         mask[-1] = False
 
         # at this point there might be no valid splits
         if not mask.any():
             continue
-
-        # we need this to set the split index w/o a search
         a = mask.argmax()
         b = -mask[::-1].argmax()
         
@@ -129,7 +125,6 @@ def split(x, y,  wts, max_features=-1, min_leaf=-1):
     best_score = results[best_split_idx, 0]
     if best_score < node_score:
         best_thr = results[best_split_idx, 1]
-        return (best_split_idx, best_thr, node_score - best_score)
+        return (best_split_idx, best_thr)
     else:
         return NO_SPLIT
-    return results

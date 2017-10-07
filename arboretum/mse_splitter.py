@@ -38,13 +38,21 @@ def split(x, y, wts, max_features=-1, min_leaf=1):
         2-tuple of feature index and split threshold of best split.
     '''
     m, n = x.shape
-    best_feature = tc.NO_FEATURE
-    best_thr = tc.NO_THR
+    NO_SPLIT = (tc.NO_FEATURE, tc.NO_THR)
     improve = False
     if max_features < 1:
         max_features = n
-    mu = (wts * y).sum() / wts.sum()
-    best_score = (wts * ((y - mu)**2)).sum()
+    tot_wt = wts.sum()
+    yw = wts * y
+    tot_yw = yw.sum()
+    yyw = y * yw
+    tot_yyw = yyw.sum()
+    mu = tot_yw / tot_wt
+    node_score = (wts * ((y - mu)**2)).sum()
+    if node_score==0:
+        return NO_SPLIT
+    # filling with a 'max-value'
+    results = node_score * np.ones((n, 2))
     col_order = np.random.choice(np.arange(n), size=n, replace=False)
     for col_ct in range(n):
         if col_ct >= max_features and improve:
@@ -57,51 +65,50 @@ def split(x, y, wts, max_features=-1, min_leaf=1):
         # 2) count of each unique value (usually 1)
         # 3) sum of targets for each unique
         # 4) sum of squared targets for each unique
-        sort_idx = f.argsort()
-        fsort = f[sort_idx]
-        ysort = y[sort_idx]
-        wsort = wts[sort_idx]
-        ntot = np.zeros(m)
         uniq = np.zeros(m)
+        ntot = np.zeros(m)
         ysum = np.zeros(m)
         yssq = np.zeros(m)
-        uniq[0] = fsort[0]                  # fsort[0] is unique
-        num_uniq = 1
-        ntot[0] = wsort[0]
-        ysum[0] += wsort[0] * ysort[0]
-        yssq[0] += wsort[0] * (ysort[0]**2)
-        for k in range(1, m):
-            if fsort[k] != fsort[k-1]:      # fsort[k] is new
-                uniq[num_uniq] = fsort[k]
+        cur_val = np.nan
+        num_uniq = 0
+        for idx in np.argsort(f):
+            if f[idx] != cur_val:
+                cur_val = f[idx]
+                uniq[num_uniq] = cur_val
                 num_uniq += 1
-            ntot[num_uniq - 1] += wsort[k]
-            ysum[num_uniq - 1] += wsort[k] * ysort[k]
-            yssq[num_uniq - 1] += wsort[k] * (ysort[k]**2)
+            ntot[num_uniq - 1] += wts[idx]
+            ysum[num_uniq - 1] += yw[idx]
+            yssq[num_uniq - 1] += yyw[idx]
         uniq = uniq[:num_uniq]
+        ntot = ntot[:num_uniq]
         ysum = ysum[:num_uniq]
         yssq = yssq[:num_uniq]
-        ntot = ntot[:num_uniq]
-        
+
         # Get cumulative counts/sum/ssq for each possible split
         nleft = ntot.cumsum()
-        nright = ntot.sum() - nleft
+        nright = tot_wt - nleft
         ysum_left = ysum.cumsum()
-        ysum_right = ysum.sum() - ysum_left
+        ysum_right = tot_yw - ysum_left
         yssq_left = yssq.cumsum()
-        yssq_right = yssq.sum() - yssq_left
+        yssq_right = tot_yyw - yssq_left
 
         # trim to valid splits (at least min_leaf both sides)
         mask = (nleft >= min_leaf) & (nright >= min_leaf)
-        nleft = nleft[mask]
-        nright = nright[mask]
-        ysum_left = ysum_left[mask]
-        ysum_right = ysum_right[mask]
-        yssq_left = yssq_left[mask]
-        yssq_right = yssq_right[mask]
+        # must have at least one value on right side of split
+        mask[-1] = False
 
         # at this point there might be no valid splits
         if not mask.any():
             continue
+        a = mask.argmax()
+        b = -mask[::-1].argmax()
+
+        nleft = nleft[a:b]
+        nright = nright[a:b]
+        ysum_left = ysum_left[a:b]
+        ysum_right = ysum_right[a:b]
+        yssq_left = yssq_left[a:b]
+        yssq_right = yssq_right[a:b]
 
         # Compute combined mse for each split
         sk_left = yssq_left - (ysum_left**2) / nleft
@@ -109,15 +116,17 @@ def split(x, y, wts, max_features=-1, min_leaf=1):
         sk = sk_left + sk_right
 
         # Select the best split
-        score = sk.min()
-        if score < best_score:
+        split_pos = sk.argmin()
+        split_score = sk[split_pos]
+        split_idx = a + split_pos
+        thr = 0.5 * (uniq[split_idx] + uniq[split_idx + 1])
+        results[feature_idx] = (split_score, thr)
+        if split_score < node_score:
             improve = True
-            best_score = score
-            best_feature = feature_idx
-            # Need index of feature of left side of split in the uniq array
-            # The sk_* arrays do not align with it, so subset with mask
-            left_thr_idx = sk.argmin()
-            left_thr = uniq[mask][left_thr_idx]
-            split_idx = np.where(uniq==left_thr)[0][0]
-            best_thr = 0.5 * (uniq[split_idx] + uniq[split_idx + 1])
-    return (best_feature, best_thr)
+    best_split_idx = results[:, 0].argmin()
+    best_score = results[best_split_idx, 0]
+    if best_score < node_score:
+        best_thr = results[best_split_idx, 1]
+        return (best_split_idx, best_thr)
+    else:
+        return NO_SPLIT

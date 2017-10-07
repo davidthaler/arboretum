@@ -36,8 +36,7 @@ def split(x, y,  wts, max_features=-1, min_leaf=-1):
         2-tuple of feature index and split threshold of best split.
     '''
     m, n = x.shape
-    best_feature = tc.NO_FEATURE
-    best_thr = tc.NO_THR
+    NO_SPLIT = (tc.NO_FEATURE, tc.NO_THR, 0.)
     improve = False
     if min_leaf == -1:              # not set
         min_leaf = wts.min()        # wts is ones if unweighted
@@ -45,12 +44,19 @@ def split(x, y,  wts, max_features=-1, min_leaf=-1):
         max_features = n
     tot_wt = wts.sum()
     ywt = y * wts
+    tot_ywt = ywt.sum()
+
     # the Gini impurity of this node before splitting
-    best_score = 1 - (ywt.sum()/tot_wt)**2 - ((tot_wt - ywt.sum())/tot_wt)**2
+    node_score = 1 - (tot_ywt/tot_wt)**2 - ((tot_wt - tot_ywt)/tot_wt)**2
+
     # a code optimization for pure nodes
-    if (y==y[0]).all():
-        return (best_feature, best_thr)
+    if node_score==0:
+        return NO_SPLIT
     col_order = np.random.choice(np.arange(n), size=n, replace=False)
+    
+    # Stores score, threshold for each feature (1 > max value for gini)
+    results = np.ones((n, 2))
+    
     for col_ct in range(n):
         if col_ct >= max_features and improve:
             break
@@ -61,64 +67,69 @@ def split(x, y,  wts, max_features=-1, min_leaf=-1):
         # 1) sorted unique values in f
         # 2) count of each unique value (usually 1)
         # 3) # of positives for each unique value
-        sort_idx = f.argsort()
-        fsort = f[sort_idx]
-        ysort = y[sort_idx]
-        wsort = wts[sort_idx]
         ntot = np.zeros(m)
         uniq = np.zeros(m)
         npos = np.zeros(m)
-        uniq[0] = fsort[0]                  # fsort[0] is unique
-        ntot[0] = wsort[0]
-        npos[0] += wsort[0] * ysort[0]
-        num_uniq = 1
-        for k in range(1, m):
-            if fsort[k] != fsort[k - 1]:    # fsort[k] is new.
-                uniq[num_uniq] = fsort[k]
+        cur_val = np.nan
+        num_uniq = 0
+        for idx in np.argsort(f):
+            if f[idx] != cur_val:
+                cur_val = f[idx]
+                uniq[num_uniq] = cur_val
                 num_uniq += 1
-            ntot[num_uniq - 1] += wsort[k]
-            npos[num_uniq - 1] +=  wsort[k] * ysort[k]
+            ntot[num_uniq - 1] += wts[idx]
+            npos[num_uniq - 1] += ywt[idx]
         uniq = uniq[:num_uniq]
         npos = npos[:num_uniq]
         ntot = ntot[:num_uniq]
-        
+
         # Get cumulative counts/positives/negatives for each possible split
         nleft = ntot.cumsum()
         nright = tot_wt - nleft
         npos_left = npos.cumsum()
         nneg_left = nleft - npos_left
-        npos_right = ywt.sum() - npos_left
+        npos_right = tot_ywt - npos_left
         nneg_right = nright - npos_right
 
-        # TODO: masking is much slower that constant-slicing
         # trim to valid splits (at least min_leaf both sides)
         mask = (nleft >= min_leaf) & (nright >= min_leaf)
-        nleft = nleft[mask]
-        nright = nright[mask]
-        npos_left = npos_left[mask]
-        npos_right = npos_right[mask]
-        nneg_left = nneg_left[mask]
-        nneg_right = nneg_right[mask]
+        # There must be at least one value on each side, 
+        # so the last position is not valid, 
+        # as there would be an empty right branch
+        mask[-1] = False
 
         # at this point there might be no valid splits
         if not mask.any():
             continue
 
-        # Compute Gini impurity for each split
-        gini_left = 1 - (npos_left/nleft)**2 - (nneg_left/nleft)**2
-        gini_right = 1 - (npos_right/nright)**2 - (nneg_right/nright)**2
-        gini_split = (nleft/tot_wt) * gini_left + (nright/tot_wt) * gini_right
+        # we need this to set the split index w/o a search
+        a = mask.argmax()
+        b = -mask[::-1].argmax()
+        
+        nleft = nleft[a:b]
+        nright = nright[a:b]
+        npos_left = npos_left[a:b]
+        npos_right = npos_right[a:b]
+        nneg_left = nneg_left[a:b]
+        nneg_right = nneg_right[a:b]
+
+        # This is a gini proxy from the form 2 * (p1 * p2)
+        gini_split = (npos_left * nneg_left / nleft) + (npos_right * nneg_right / nright)
 
         # Select the best split
-        score = gini_split.min()
-        if score < best_score:
+        split_pos = gini_split.argmin()
+        # gini_split holds a proxy score that differs from gini by (2/tot_wt)
+        split_score = (2/tot_wt) * gini_split[split_pos]
+        split_idx = a + split_pos
+        thr = 0.5 * (uniq[split_idx] + uniq[split_idx + 1])
+        results[feature_idx] = (split_score, thr)
+        if split_score < node_score:
             improve = True
-            best_score = score
-            best_feature = feature_idx
-            # Need index of feature of left side of split in the uniq array
-            # The gini_* arrays do not align with it, so subset with mask
-            left_thr_idx = gini_split.argmin()
-            left_thr = uniq[mask][left_thr_idx]
-            split_idx = np.where(uniq==left_thr)[0][0]
-            best_thr = 0.5 * (uniq[split_idx] + uniq[split_idx + 1])
-    return (best_feature, best_thr)
+    best_split_idx = results[:, 0].argmin()
+    best_score = results[best_split_idx, 0]
+    if best_score < node_score:
+        best_thr = results[best_split_idx, 1]
+        return (best_split_idx, best_thr, node_score - best_score)
+    else:
+        return NO_SPLIT
+    return results

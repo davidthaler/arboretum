@@ -13,7 +13,7 @@ import numba
 from . import tree_constants as tc
 
 
-def build_tree(x, y, split_fn, wts=None, max_features=-1, min_leaf=-1, 
+def build_tree(x, y, split_fn, wts, max_features=-1, min_leaf=-1, 
                 min_split=2, max_depth=-1, depth=0, node_num=0):
     '''
     Recursively build a decision tree. 
@@ -40,8 +40,6 @@ def build_tree(x, y, split_fn, wts=None, max_features=-1, min_leaf=-1,
     Returns:
         2-D numpy array of dtype 'float' with 
     '''
-    if wts is None:
-        wts = np.ones_like(y)
     tot_wt = wts.sum()
     val = (y * wts).sum() / tot_wt
     if (tot_wt < min_split) or (depth == max_depth):

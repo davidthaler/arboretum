@@ -51,6 +51,8 @@ class Tree(BaseModel):
         Returns:
             Returns self, the fitted estimator
         '''
+        if weights is None:
+            weights = np.ones_like(y)
         self.n_features_ = x.shape[1]
         self.tree_ = tree_builder.build_tree(x, y, self.split_fn,
                                              wts=weights,

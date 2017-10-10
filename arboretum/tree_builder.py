@@ -13,7 +13,7 @@ import numba
 from . import tree_constants as tc
 
 
-def build_tree(x, y, split_fn, wts, max_features=-1, min_leaf=-1, 
+def build_tree(x, y, split_fn, wts, max_features, min_leaf=-1, 
                 min_split=2, max_depth=-1, depth=0, node_num=0):
     '''
     Recursively build a decision tree. 
@@ -28,7 +28,7 @@ def build_tree(x, y, split_fn, wts, max_features=-1, min_leaf=-1,
             and returns the best split feature and threshold.
         wts: sample weights, default of None for all 1's
         max_features: try up to this number of features per split
-            default of -1 for all features
+            Caller must set to value in 1...x.shape[1]
         min_leaf: min sample weight for a leaf
             default of -1 for wts.min(), which is 1 if wts is None
         min_split: do not split node if it has less than `min_split` samples

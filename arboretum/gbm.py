@@ -26,7 +26,7 @@ class GBM(BaseModel):
     estimator_params = ['max_features', 'max_depth']
 
     def __init__(self, n_trees=100, learn_rate=0.1, max_depth=3,
-                    subsample=1.0, max_features=-1):
+                    subsample=1.0, max_features=None):
         self.n_trees = n_trees
         self.learn_rate = learn_rate
         self.max_depth = max_depth

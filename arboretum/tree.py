@@ -21,7 +21,9 @@ class Tree(BaseModel):
         split_fn: function or callable that takes training data, labels, 
             sample weights and the min_leaf and max_features parameters
             (explained below) and returns the best split feature and threshold.
-        max_features: (int) number of features to try at each split
+        max_features: controls number of features to try at each split
+            If float, should be in (0, 1]; use int(n_features * max_features)
+            If int, use that number of features. If None, use all features.
         min_leaf: if weights are passed to fit(), this is the minimum sample
             weight in a leaf node; if unweighted, it is the minimum number 
             of samples in a leaf node.
@@ -35,8 +37,23 @@ class Tree(BaseModel):
         self.split_fn = split_fn
         self.min_leaf = min_leaf
         self.min_split = min_split
-        self.max_features = -1 if max_features is None else max_features
+        self.max_features = max_features
         self.max_depth = -1 if max_depth is None else max_depth
+
+    def _get_maxf(self):
+        '''
+        Get the correct int value for max_features
+        NB: self.n_features_ has to be set before calling this.
+        '''
+        if type(self.max_features) is float:
+            return int(self.n_features_ * self.max_features)
+        elif type(self.max_features) is int:
+            return self.max_features
+        elif self.max_features is None:
+            return self.n_features_
+        else:
+            msg = '%s not valid for self.max_features' % self.max_features
+            raise AttributeError(msg)
 
     def fit(self, x, y, weights=None):
         '''
@@ -56,7 +73,7 @@ class Tree(BaseModel):
         self.n_features_ = x.shape[1]
         self.tree_ = tree_builder.build_tree(x, y, self.split_fn,
                                              wts=weights,
-                                             max_features=self.max_features,
+                                             max_features=self._get_maxf(),
                                              min_leaf=self.min_leaf,
                                              min_split=self.min_split,
                                              max_depth=self.max_depth)

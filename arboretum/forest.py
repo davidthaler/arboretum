@@ -26,6 +26,10 @@ class Forest(BaseModel):
         self.min_split = min_split
         self.max_depth = max_depth
     
+    def _get_maxf(self):
+        '''Get adjusted max_features value. Overridden in RFClassifier.'''
+        return self.max_features
+
     def fit(self, x, y, weights=None):
         '''
         Fits a random forest using tree.Tree to the given data. 
@@ -46,6 +50,7 @@ class Forest(BaseModel):
         self.n_features_ = x.shape[1]
         self.estimators_ = []
         est_params = {ep:getattr(self, ep) for ep in self.estimator_params}
+        est_params['max_features'] = self._get_maxf()
         all_idx = np.arange(n)
         oob_ct = np.zeros(n)
         oob_prob = np.zeros(n)
@@ -88,7 +93,9 @@ class RFRegressor(Forest):
 
     Args:
         n_trees: (int) number of trees to fit
-        max_features: (int) number of features to try at each split
+        max_features: controls number of features to try at each split
+            If float, should be in (0, 1]; use int(n_features * max_features)
+            If int, use that number of features. If None, use all features.
         min_leaf: if weights are passed to fit(), this is the minimum sample
             weight in a leaf node; if unweighted, it is the minimum number 
             of samples in a leaf node.
@@ -125,7 +132,10 @@ class RFClassifier(Forest):
 
     Args:
         n_trees: (int) number of trees to fit
-        max_features: (int) number of features to try at each split
+        max_features: controls number of features to try at each split
+            If float (0, 1]; use int(n_features * max_features) 
+            If int, use that number of features. 
+            If None, use np.round(np.sqrt(n_features)).
         min_leaf: if weights are passed to fit(), this is the minimum sample
             weight in a leaf node; if unweighted, it is the minimum number 
             of samples in a leaf node.
@@ -141,6 +151,15 @@ class RFClassifier(Forest):
         super().__init__(base_estimator, n_trees=n_trees, 
                         max_features=max_features, min_leaf=min_leaf,
                         min_split=min_split, max_depth=max_depth)
+
+    def _get_maxf(self):
+        '''
+        Get the adjusted value for max_features.
+        NB: self.n_features_ has to be set before calling this.
+        '''
+        if self.max_features is None:
+            return int(np.round(np.sqrt(self.n_features_)))
+        return self.max_features
 
     def predict_proba(self, x):
         '''

@@ -11,7 +11,7 @@ import numba
 from . import tree_constants as tc
 
 @numba.jit(nopython=True)
-def split(x, y,  wts, max_features=-1, min_leaf=-1):
+def split(x, y,  wts, max_features, min_leaf=-1):
     '''
     Given features x and labels y, find the feature index and threshold for a
     split that produces the largest reduction in Gini impurity.
@@ -28,7 +28,7 @@ def split(x, y,  wts, max_features=-1, min_leaf=-1):
         y: m-element 1-D numpy array of labels; must be 0-1.
         wts: sample weights, use ones for unweighted case
         max_features: try up to this number of features per split
-            default of -1 for all features
+            Caller must set to value in 1...x.shape[1]
         min_leaf: min sample weight for a leaf
             default of -1 for wts.min()
 
@@ -40,8 +40,6 @@ def split(x, y,  wts, max_features=-1, min_leaf=-1):
     improve = False
     if min_leaf == -1:              # not set
         min_leaf = wts.min()        # wts is ones if unweighted
-    if max_features == -1:
-        max_features = n
     tot_wt = wts.sum()
     ywt = y * wts
     tot_ywt = ywt.sum()

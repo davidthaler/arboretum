@@ -102,7 +102,8 @@ class RFRegressor(Forest):
         min_split: if weights are passed to fit(), this is the minimum sample
             weight for splitting a node; if unweighted, it is the minimum
             number of samples needed to split a node.
-        max_depth: (int) the maximum depth of the trees grown.
+        max_depth: (int) the maximum depth of the trees grown. 
+            Default of None for no depth limit.
     '''
     def __init__(self, n_trees=30, max_features=None, min_leaf=1, 
                     min_split=2, max_depth=None):
@@ -143,6 +144,7 @@ class RFClassifier(Forest):
             weight for splitting a node; if unweighted, it is the minimum
             number of samples needed to split a node.
         max_depth: (int) the maximum depth of the trees grown.
+            Default of None for no depth limit.
     '''
 
     def __init__(self, n_trees=30, max_features=None, min_leaf=1, 

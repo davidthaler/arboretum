@@ -30,7 +30,8 @@ class Tree(BaseModel):
         min_split: if weights are passed to fit(), this is the minimum sample
             weight for splitting a node; if unweighted, it is the minimum
             number of samples needed to split a node.
-        max_depth: (int) the maximum depth of this tree.
+        max_depth: (int) the maximum depth of this tree. 
+            Default of None for no depth limit.
     '''
     def __init__(self, split_fn, max_features=None, 
                 min_leaf=1, min_split=2, max_depth=None):
@@ -38,7 +39,7 @@ class Tree(BaseModel):
         self.min_leaf = min_leaf
         self.min_split = min_split
         self.max_features = max_features
-        self.max_depth = -1 if max_depth is None else max_depth
+        self.max_depth = max_depth
 
     def _get_maxf(self):
         '''
@@ -70,13 +71,14 @@ class Tree(BaseModel):
         '''
         if weights is None:
             weights = np.ones_like(y)
+        max_depth = -1 if self.max_depth is None else self.max_depth
         self.n_features_ = x.shape[1]
         self.tree_ = tree_builder.build_tree(x, y, self.split_fn,
                                              wts=weights,
                                              max_features=self._get_maxf(),
                                              min_leaf=self.min_leaf,
                                              min_split=self.min_split,
-                                             max_depth=self.max_depth)
+                                             max_depth=max_depth)
         return self
 
     def apply(self, x):
@@ -146,6 +148,7 @@ class RegressionTree(Tree):
             weight for splitting a node; if unweighted, it is the minimum
             number of samples needed to split a node.
         max_depth: (int) the maximum depth of this tree.
+            Default of None for no depth limit.
     '''
 
     def __init__(self, max_features=None, min_leaf=1, min_split=2, max_depth=None):
@@ -181,6 +184,7 @@ class ClassificationTree(Tree):
             weight for splitting a node; if unweighted, it is the minimum
             number of samples needed to split a node.
         max_depth: (int) the maximum depth of this tree.
+            Default of None for no depth limit.
     '''
 
     def __init__(self, max_features=None, min_leaf=1, min_split=2, max_depth=None):

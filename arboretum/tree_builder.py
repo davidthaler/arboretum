@@ -66,7 +66,7 @@ def build_tree(x, y, split_fn, wts, max_depth, max_features, min_leaf=-1,
     return np.concatenate([root, left_tree, right_tree])
 
 
-@numba.jit
+@numba.jit(cache=True)
 def apply(tree, x):
     '''
     Finds the node number in the provided tree (from build_tree) that each

@@ -11,7 +11,7 @@ import numba
 from . import tree_constants as tc
 
 
-@numba.jit(nopython=True)
+@numba.jit(nopython=True, cache=True)
 def split(x, y, wts, max_features, min_leaf=1):
     '''
     Given features x and labels y, find the feature index and threshold for a

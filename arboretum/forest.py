@@ -15,15 +15,13 @@ class Forest(BaseModel):
     models using trees from arboretum.tree.
     '''
 
-    estimator_params = ['max_features', 'min_leaf', 'min_split', 'max_depth']
+    estimator_params = ['max_features', 'min_leaf', 'max_depth']
 
-    def __init__(self, base_estimator, n_trees, max_features, min_leaf, 
-                    min_split, max_depth):
+    def __init__(self, base_estimator, n_trees, max_features, min_leaf, max_depth):
         self.base_estimator = base_estimator
         self.n_trees = n_trees
         self.max_features = max_features
         self.min_leaf = min_leaf
-        self.min_split = min_split
         self.max_depth = max_depth
     
     def _get_maxf(self):
@@ -99,18 +97,14 @@ class RFRegressor(Forest):
         min_leaf: if weights are passed to fit(), this is the minimum sample
             weight in a leaf node; if unweighted, it is the minimum number 
             of samples in a leaf node.
-        min_split: if weights are passed to fit(), this is the minimum sample
-            weight for splitting a node; if unweighted, it is the minimum
-            number of samples needed to split a node.
         max_depth: (int) the maximum depth of the trees grown. 
             Default of None for no depth limit.
     '''
-    def __init__(self, n_trees=30, max_features=None, min_leaf=1, 
-                    min_split=2, max_depth=None):
+    def __init__(self, n_trees=30, max_features=None, min_leaf=1, max_depth=None):
         base_estimator = tree.RegressionTree()
         super().__init__(base_estimator, n_trees=n_trees,
                         max_features=max_features, min_leaf=min_leaf,
-                        min_split=min_split, max_depth=max_depth)
+                        max_depth=max_depth)
 
     def predict(self, x):
         '''
@@ -140,19 +134,15 @@ class RFClassifier(Forest):
         min_leaf: if weights are passed to fit(), this is the minimum sample
             weight in a leaf node; if unweighted, it is the minimum number 
             of samples in a leaf node.
-        min_split: if weights are passed to fit(), this is the minimum sample
-            weight for splitting a node; if unweighted, it is the minimum
-            number of samples needed to split a node.
         max_depth: (int) the maximum depth of the trees grown.
             Default of None for no depth limit.
     '''
 
-    def __init__(self, n_trees=30, max_features=None, min_leaf=1, 
-                    min_split=2, max_depth=None):
+    def __init__(self, n_trees=30, max_features=None, min_leaf=1, max_depth=None):
         base_estimator = tree.ClassificationTree()
         super().__init__(base_estimator, n_trees=n_trees, 
                         max_features=max_features, min_leaf=min_leaf,
-                        min_split=min_split, max_depth=max_depth)
+                        max_depth=max_depth)
 
     def _get_maxf(self):
         '''

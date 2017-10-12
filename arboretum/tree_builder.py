@@ -13,8 +13,8 @@ import numba
 from . import tree_constants as tc
 
 
-def build_tree(x, y, split_fn, wts, max_depth, max_features, min_leaf=-1, 
-                min_split=2, depth=0, node_num=0):
+def build_tree(x, y, split_fn, wts, max_depth, max_features, min_leaf=-1,
+                depth=0, node_num=0):
     '''
     Recursively build a decision tree. 
     Returns a 2-D array of shape (num_nodes x 7) that describes the tree.
@@ -32,7 +32,6 @@ def build_tree(x, y, split_fn, wts, max_depth, max_features, min_leaf=-1,
             Caller must set to value in 1...x.shape[1]
         min_leaf: min sample weight for a leaf
             default of -1 for wts.min(), which is 1 if wts is None
-        min_split: do not split node if it has less than `min_split` samples
         depth: the depth of this node; the root is 0
         node_num: the node number of this node
             default 0 is for the root node
@@ -42,7 +41,7 @@ def build_tree(x, y, split_fn, wts, max_depth, max_features, min_leaf=-1,
     '''
     tot_wt = wts.sum()
     val = (y * wts).sum() / tot_wt
-    if (tot_wt < min_split) or (depth == max_depth):
+    if depth == max_depth:
         return np.array([[tc.NO_FEATURE, tc.NO_THR, node_num,
                          tc.NO_CHILD, tc.NO_CHILD, tot_wt, val]])
     feature, thr = split_fn(x, y, wts, max_features=max_features, min_leaf=min_leaf)
@@ -52,16 +51,14 @@ def build_tree(x, y, split_fn, wts, max_depth, max_features, min_leaf=-1,
     left_root = node_num + 1
     left_tree = build_tree(x[mask], y[mask], split_fn, wts[mask], 
                            max_features=max_features,
-                           min_leaf=min_leaf, 
-                           min_split=min_split,
+                           min_leaf=min_leaf,
                            max_depth=max_depth,
                            depth=depth + 1,
                            node_num=left_root)
     right_root = left_root + len(left_tree)
     right_tree = build_tree(x[~mask], y[~mask], split_fn, wts[~mask], 
                             max_features=max_features,
-                            min_leaf=min_leaf, 
-                            min_split=min_split, 
+                            min_leaf=min_leaf,
                             max_depth=max_depth, 
                             depth=depth + 1, 
                             node_num=right_root)

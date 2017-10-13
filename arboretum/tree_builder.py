@@ -3,7 +3,7 @@ These functions build a decision tree, which is output as a table
 contained in a numpy array.
 
 The tree does single-output, binary classification using the Gini impurity 
-criterion.
+criterion and mean squared error regression.
 
 author: David Thaler
 date: August 2017
@@ -65,7 +65,7 @@ def build_tree(x, y, split_fn, wts, max_depth, max_features, min_leaf,
     return np.concatenate([root, left_tree, right_tree])
 
 
-@numba.jit(cache=True)
+@numba.jit
 def apply(tree, x):
     '''
     Finds the node number in the provided tree (from build_tree) that each

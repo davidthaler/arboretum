@@ -11,7 +11,7 @@ import numba
 from . import tree_constants as tc
 
 @numba.jit(nopython=True, cache=True)
-def split(x, y,  wts, max_features, min_leaf=-1):
+def split(x, y,  wts, max_features, min_leaf):
     '''
     Given features x and labels y, find the feature index and threshold for a
     split that produces the largest reduction in Gini impurity.
@@ -29,8 +29,7 @@ def split(x, y,  wts, max_features, min_leaf=-1):
         wts: sample weights, use ones for unweighted case
         max_features: try up to this number of features per split
             Caller must set to value in 1...x.shape[1]
-        min_leaf: min sample weight for a leaf
-            default of -1 for wts.min()
+        min_leaf: minimum number of samples for a leaf
 
     Returns:
         2-tuple of feature index and split threshold of best split.
@@ -38,8 +37,6 @@ def split(x, y,  wts, max_features, min_leaf=-1):
     m, n = x.shape
     NO_SPLIT = (tc.NO_FEATURE, tc.NO_THR)
     improve = False
-    if min_leaf == -1:              # not set
-        min_leaf = wts.min()        # wts is ones if unweighted
     tot_wt = wts.sum()
     ywt = y * wts
     tot_ywt = ywt.sum()
@@ -70,16 +67,30 @@ def split(x, y,  wts, max_features, min_leaf=-1):
         npos = np.zeros(m)
         cur_val = np.nan
         num_uniq = 0
-        for idx in np.argsort(f):
+        a = -1
+        b = -1
+        f_idx = np.argsort(f)
+        for i in range(m):
+            idx = f_idx[i]
             if f[idx] != cur_val:
                 cur_val = f[idx]
                 uniq[num_uniq] = cur_val
                 num_uniq += 1
+            # count on left matches min_leaf, so start slice
+            if (i + 1) == min_leaf:
+                a = num_uniq - 1
+            # count on right (m - i - 1), dropped below min_leaf so end slice
+            if (m - i) == min_leaf:
+                b = num_uniq - 1
             ntot[num_uniq - 1] += wts[idx]
             npos[num_uniq - 1] += ywt[idx]
         uniq = uniq[:num_uniq]
         npos = npos[:num_uniq]
         ntot = ntot[:num_uniq]
+
+        # at this point there might be no valid splits
+        if b <= a:
+            continue
 
         # Get cumulative counts/positives/negatives for each possible split
         nleft = ntot.cumsum()
@@ -88,17 +99,6 @@ def split(x, y,  wts, max_features, min_leaf=-1):
         nneg_left = nleft - npos_left
         npos_right = tot_ywt - npos_left
         nneg_right = nright - npos_right
-
-        # trim to valid splits (at least min_leaf both sides)
-        mask = (nleft >= min_leaf) & (nright >= min_leaf)
-        # There must be at least one value on each side
-        mask[-1] = False
-
-        # at this point there might be no valid splits
-        if not mask.any():
-            continue
-        a = mask.argmax()
-        b = -mask[::-1].argmax()
         
         nleft = nleft[a:b]
         nright = nright[a:b]

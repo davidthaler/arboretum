@@ -94,13 +94,11 @@ class RFRegressor(Forest):
         max_features: controls number of features to try at each split
             If float, should be in (0, 1]; use int(n_features * max_features)
             If int, use that number of features. If None, use all features.
-        min_leaf: if weights are passed to fit(), this is the minimum sample
-            weight in a leaf node; if unweighted, it is the minimum number 
-            of samples in a leaf node.
+        min_leaf: minimum number of samples for a leaf; default 5
         max_depth: (int) the maximum depth of the trees grown. 
             Default of None for no depth limit.
     '''
-    def __init__(self, n_trees=30, max_features=None, min_leaf=1, max_depth=None):
+    def __init__(self, n_trees=30, max_features=None, min_leaf=5, max_depth=None):
         base_estimator = tree.RegressionTree()
         super().__init__(base_estimator, n_trees=n_trees,
                         max_features=max_features, min_leaf=min_leaf,
@@ -131,9 +129,7 @@ class RFClassifier(Forest):
             If float (0, 1]; use int(n_features * max_features) 
             If int, use that number of features. 
             If None, use np.round(np.sqrt(n_features)).
-        min_leaf: if weights are passed to fit(), this is the minimum sample
-            weight in a leaf node; if unweighted, it is the minimum number 
-            of samples in a leaf node.
+        min_leaf: minimum number of samples for a leaf; default 1
         max_depth: (int) the maximum depth of the trees grown.
             Default of None for no depth limit.
     '''

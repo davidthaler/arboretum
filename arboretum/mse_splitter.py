@@ -12,12 +12,11 @@ from . import tree_constants as tc
 
 
 @numba.jit(nopython=True, cache=True)
-def split(x, y, wts, max_features, min_leaf=1):
+def split(x, y, wts, max_features, min_leaf):
     '''
     Given features x and labels y, find the feature index and threshold for a
     split that produces the largest reduction in residual sum of squares.
-    Each side of the split must have at least min_leaf samples or min_leaf
-    total sample weight.
+    Each side of the split must have at least min_leaf samples.
 
     Note:
         If no valid split is found after max_features, and max_features is less
@@ -31,8 +30,7 @@ def split(x, y, wts, max_features, min_leaf=1):
         wts: m-element 1-D array of sample weights, use ones if unweighted
         max_features: try up to this number of features per split
             Caller must set to value in 1...x.shape[1]
-        min_leaf: min sample weight for a leaf or minimum samples in a leaf
-            if unweighted; default of -1 for wts.min()
+        min_leaf: minimum number of samples for a leaf node
 
     Returns:
         2-tuple of feature index and split threshold of best split.
@@ -69,11 +67,21 @@ def split(x, y, wts, max_features, min_leaf=1):
         yssq = np.zeros(m)
         cur_val = np.nan
         num_uniq = 0
-        for idx in np.argsort(f):
+        a = -1
+        b = -1
+        f_idx = np.argsort(f)
+        for i in range(m):
+            idx = f_idx[i]
             if f[idx] != cur_val:
                 cur_val = f[idx]
                 uniq[num_uniq] = cur_val
                 num_uniq += 1
+            # the count on the left, i + 1,  matches min_leaf
+            if (i + 1) == min_leaf:
+                a = num_uniq - 1
+            # m - (i+1) just dropped below min_leaf
+            if (m - i) == min_leaf:
+                b = num_uniq - 1
             ntot[num_uniq - 1] += wts[idx]
             ysum[num_uniq - 1] += yw[idx]
             yssq[num_uniq - 1] += yyw[idx]
@@ -82,6 +90,10 @@ def split(x, y, wts, max_features, min_leaf=1):
         ysum = ysum[:num_uniq]
         yssq = yssq[:num_uniq]
 
+        # at this point there might be no valid splits
+        if b <= a:
+            continue
+
         # Get cumulative counts/sum/ssq for each possible split
         nleft = ntot.cumsum()
         nright = tot_wt - nleft
@@ -89,17 +101,6 @@ def split(x, y, wts, max_features, min_leaf=1):
         ysum_right = tot_yw - ysum_left
         yssq_left = yssq.cumsum()
         yssq_right = tot_yyw - yssq_left
-
-        # trim to valid splits (at least min_leaf both sides)
-        mask = (nleft >= min_leaf) & (nright >= min_leaf)
-        # must have at least one value on right side of split
-        mask[-1] = False
-
-        # at this point there might be no valid splits
-        if not mask.any():
-            continue
-        a = mask.argmax()
-        b = -mask[::-1].argmax()
 
         nleft = nleft[a:b]
         nright = nright[a:b]

@@ -13,7 +13,7 @@ import numba
 from . import tree_constants as tc
 
 
-def build_tree(x, y, split_fn, wts, max_depth, max_features, min_leaf=-1,
+def build_tree(x, y, split_fn, wts, max_depth, max_features, min_leaf,
                 depth=0, node_num=0):
     '''
     Recursively build a decision tree. 
@@ -30,8 +30,7 @@ def build_tree(x, y, split_fn, wts, max_depth, max_features, min_leaf=-1,
         max_depth: stop at this depth; set to -1 (<0) for no depth limit
         max_features: try up to this number of features per split
             Caller must set to value in 1...x.shape[1]
-        min_leaf: min sample weight for a leaf
-            default of -1 for wts.min(), which is 1 if wts is None
+        min_leaf: minimum number of samples for a leaf
         depth: the depth of this node; the root is 0
         node_num: the node number of this node
             default 0 is for the root node

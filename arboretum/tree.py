@@ -24,9 +24,7 @@ class Tree(BaseModel):
         max_features: controls number of features to try at each split
             If float, should be in (0, 1]; use int(n_features * max_features)
             If int, use that number of features. If None, use all features.
-        min_leaf: if weights are passed to fit(), this is the minimum sample
-            weight in a leaf node; if unweighted, it is the minimum number 
-            of samples in a leaf node.
+        min_leaf: minimum number of samples for a leaf; default 1
         max_depth: (int) the maximum depth of this tree. 
             Default of None for no depth limit.
     '''
@@ -135,9 +133,7 @@ class RegressionTree(Tree):
 
     Args:
         max_features: (int) number of features to try at each split
-        min_leaf: if weights are passed to fit(), this is the minimum sample
-            weight in a leaf node; if unweighted, it is the minimum number 
-            of samples in a leaf node.
+        min_leaf: minimum number of samples for a leaf; default 1
         max_depth: (int) the maximum depth of this tree.
             Default of None for no depth limit.
     '''
@@ -167,9 +163,7 @@ class ClassificationTree(Tree):
 
     Args:
         max_features: (int) number of features to try at each split
-        min_leaf: if weights are passed to fit(), this is the minimum sample
-            weight in a leaf node; if unweighted, it is the minimum number 
-            of samples in a leaf node.
+        min_leaf: minimum number of samples for a leaf; default 1
         max_depth: (int) the maximum depth of this tree.
             Default of None for no depth limit.
     '''

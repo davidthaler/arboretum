@@ -99,8 +99,8 @@ class Tree(BaseModel):
         Returns:
             array (n_samples,) decision function for each row in x
         '''
-        self._predict_check(x)
-        return tree_builder.prediction_value(self.tree_, x)
+        leaf_idx = self.apply(x)
+        return self.value[leaf_idx]
 
     @property
     def value(self):

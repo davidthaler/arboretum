@@ -6,6 +6,7 @@ into train/test folds.
 author: David Thaler
 date: September 2017
 '''
+import numpy as np
 import pandas as pd
 import os
 
@@ -77,4 +78,21 @@ def load_als():
     xte = als[als.testset].values.astype(float)[:, 2:]
     ytr = als.dFRS[~als.testset].values.astype(float)
     yte = als.dFRS[als.testset].values.astype(float)
+    return xtr, ytr, xte, yte
+
+def load_diabetes():
+    '''
+    Loads the diabetes dataset and splits it into train and test sets,
+    with every 3rd row in test.
+
+    Returns:
+        xtrain, ytrain, xtest, ytest
+    '''
+    path = os.path.join(DATA_DIR, 'diabetes.csv.gz')
+    data = pd.read_csv(path)
+    idx = np.tile([True, True, False], 150)[:len(data)]
+    xtr = data.values[idx, :-1]
+    ytr = data.prog.values[idx]
+    xte = data.values[~idx, :-1]
+    yte = data.prog.values[~idx]
     return xtr, ytr, xte, yte

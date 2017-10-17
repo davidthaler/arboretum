@@ -8,7 +8,7 @@ import numpy as np
 from . import mse_splitter
 from . import gini_splitter
 from . import tree_constants as tc
-from . import Tree, ClassificationTree, RegressionTree
+from . import Tree
 
 class SmoothTree(Tree):
     '''
@@ -93,14 +93,15 @@ class SmoothRegressionTree(SmoothTree):
     Args:
         vss: a virtual sample size; the parent response is averaged together 
             with each node value weighted by vss and this node's count/weight
+            Default of 0 is a regular tree.
         max_features: controls number of features to try at each split
             If float, should be in (0, 1]; use int(n_features * max_features)
             If int, use that number of features. If None, use all features.
-        min_leaf: minimum number of samples for a leaf; default 1
+        min_leaf: minimum number of samples for a leaf; default 5
         max_depth: (int) the maximum depth of this tree. 
             Default of None for no depth limit.
     '''
-    def __init__(self, vss, max_features=None, min_leaf=1, max_depth=None):
+    def __init__(self, vss=0, max_features=None, min_leaf=5, max_depth=None):
         super().__init__(vss=vss,
                          split_fn=mse_splitter.split,
                          max_features=max_features,
@@ -130,6 +131,7 @@ class SmoothClassificationTree(SmoothTree):
     Args:
         vss: a virtual sample size; the parent response is averaged together 
             with each node value weighted by vss and this node's count/weight
+            Default of 0 is a regular tree.
         max_features: controls number of features to try at each split
             If float, should be in (0, 1]; use int(n_features * max_features)
             If int, use that number of features. If None, use all features.
@@ -137,7 +139,7 @@ class SmoothClassificationTree(SmoothTree):
         max_depth: (int) the maximum depth of this tree. 
             Default of None for no depth limit.
     '''
-    def __init__(self, vss, max_features=None, min_leaf=1, max_depth=None):
+    def __init__(self, vss=0, max_features=None, min_leaf=1, max_depth=None):
         super().__init__(vss=vss,
                          split_fn=gini_splitter.split,
                          max_features=max_features,

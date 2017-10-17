@@ -32,9 +32,12 @@ class BaseModel:
         '''Need to prevent calling through to object for get_params to work.'''
         pass
 
-    def get_params(self):
+    def get_params(self, deep=False):
         '''
         Generate a dict of all configuration params used by this model.
+
+        Args:
+            deep: Not used, but needed for sklearn.model_selection
 
         Returns:
             dict of configuration params and their values
@@ -43,6 +46,24 @@ class BaseModel:
         names = list(sig.parameters.keys())
         params = {n:getattr(self, n) for n in names}
         return params
+
+    def set_params(self, **params):
+        '''
+        Set parameters of estimators. This requires that every user-
+        configurable parameter must be exposed in the constructor.
+
+        Args:
+            params: keyword arguments for each adjusted parameter
+
+        Returns:
+            self, with the given parameters adjusted.
+        '''
+        constr_params = self.get_params().keys()
+        for name in params:
+            if name not in constr_params:
+                raise ValueError('%s not a valid param name' % name)
+            setattr(self, name, params[name])
+        return self
 
     def __repr__(self):
         '''

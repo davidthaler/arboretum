@@ -12,14 +12,15 @@ and GBM - that are:
 * fast enough to actually be used (within 2x of scikit-learn)
 
 Later we will use this as a test bed for tree and tree ensemble experiments.
-They will be added here.
+They will be added to this page.
 
 ## Requirements
 * [Numpy](http://www.numpy.org/)
 * [Numba](http://numba.pydata.org/numba-doc/dev/index.html) is a jit compiler for python that we use to accelerate key code sections.
 
+## Scikit-Learn
 Although the package is sklearn-compatible and uses the sklearn estimator API, 
-it does not depend on sklearn.
+it does not depend on sklearn. The tests and examples do use sklearn.
 
 ## Installation
 This package is not on pypi, so you need to clone from github. Then you can install with pip.
@@ -52,6 +53,8 @@ Regressors have only fit/predict, no predict_proba.
     regtree.fit(x_train, y_train)
     pred = regtree.predict(x_test)
 
+See the `examples/` directory for more involved usage examples.
+
 ## More on Numba
 Numba is a just-in-time compiler (jit) for python code.
 It supports a only subset of standard python and the pydata stack (numpy/scipy/etc. ...), 
@@ -63,3 +66,13 @@ Support for recursion and OOP is experimental/unstable.
 This project uses Numba to accelerate key sections of the code, like the splitter and apply.
 Numba can be difficult to get installed. 
 I recommend using the [Anaconda](https://docs.continuum.io/anaconda/) python distribution, which includes it.
+
+
+## Experiments
+The simple design of arboretum is intended to facilitate tree and tree ensemble experiments.
+These are experiments arboretum has been used for so far:
+
+*   SmoothTree - smoothing predictions back towards the parent node value. 
+    No clear improvement. Explained in a noetbook at examples/SmoothTree.
+    Implemented in arboretum.smooth_tree.
+    

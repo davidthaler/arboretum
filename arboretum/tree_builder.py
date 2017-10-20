@@ -40,12 +40,18 @@ def build_tree(x, y, split_fn, wts, max_depth, max_features, min_leaf,
     '''
     tot_wt = wts.sum()
     val = (y * wts).sum() / tot_wt
+    NO_SPLIT =  np.array([[tc.NO_FEATURE,
+                           tc.NO_THR,
+                           node_num,
+                           tc.NO_CHILD,
+                           tc.NO_CHILD,
+                           tot_wt,
+                           val]])
     if depth == max_depth:
-        return np.array([[tc.NO_FEATURE, tc.NO_THR, node_num,
-                         tc.NO_CHILD, tc.NO_CHILD, tot_wt, val]])
+        return NO_SPLIT
     feature, thr = split_fn(x, y, wts, max_features=max_features, min_leaf=min_leaf)
     if feature == tc.NO_FEATURE:
-        return np.array([[feature, thr, node_num, tc.NO_CHILD, tc.NO_CHILD, tot_wt, val]])
+        return NO_SPLIT
     mask = x[:, feature] <= thr
     left_root = node_num + 1
     left_tree = build_tree(x[mask], y[mask], split_fn, wts[mask], 
@@ -92,20 +98,3 @@ def apply(tree, x):
                 node = int(tree[node, tc.CHILD_RIGHT_COL])
         out[k] = node
     return out.astype(int)
-
-
-def prediction_value(tree, x):
-    '''
-    Returns the prediction value for each row in x given a tree.
-    For regression trees, this is the estimate. For classification
-    trees, it is p(y=1|x).
-
-    Args:
-        tree: the array returned by build_tree
-        x: m x n numpy array of numeric features
-
-    Returns:
-        1-D numpy array (dtype float) of prediction values
-    '''
-    leaf_idx = apply(tree, x)
-    return tree[leaf_idx, tc.VAL_COL]
